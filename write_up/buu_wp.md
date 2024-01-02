@@ -1291,6 +1291,112 @@ for i in res:
 
 ### 57. [ACTF新生赛2020]base64隐写
 
+跑脚本解决：
+
+```python
+import base64
+ 
+def get_base64_diff_value(s1, s2):
+    base64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    res = 0
+    for i in range(len(s2)):
+        if s1[i] != s2[i]:
+            return abs(base64chars.index(s1[i]) - base64chars.index(s2[i]))
+ 
+    return res
+ 
+def solve_stego():
+    with open('ComeOn!.txt') as f:
+        file_lines = f.readlines()
+        bin_str = ''
+        for line in file_lines:
+            steg_line = line.replace('\n', '')
+            #norm_line = line.replace('\n', '').decode('base64').encode('base64').replace('\n','')
+ 
+            norm_line = line.replace('\n', '').encode('utf-8')
+            norm_line = base64.b64decode(norm_line).decode('utf-8')
+            
+            norm_line = base64.b64encode(norm_line.encode('utf-8')).decode('utf-8')
+            norm_line = norm_line.replace('\n', '')
+ 
+ 
+            diff = get_base64_diff_value(steg_line, norm_line)
+            print(diff)
+            pads_num = steg_line.count('=')
+            if diff:
+                bin_str += bin(diff)[2:].zfill(pads_num * 2)
+            else:
+                bin_str += '0' * pads_num * 2
+            print(goflag(bin_str))
+ 
+ 
+def goflag(bin_str):
+    res_str = ''
+    for i in range(0, len(bin_str), 8):
+        res_str += chr(int(bin_str[i:i+8], 2))
+    return res_str
+ 
+if __name__ == '__main__':
+    solve_stego()
+```
+
+### 58. [MRCTF2020]ezmisc
+
+010打开提示CRC错误，应该是修改了宽高，跑脚本看看正确的宽高是多少：
+
+![image-20231228101251210](buu_wp.assets/image-20231228101251210.png)
+
+```python
+import os
+import binascii
+import struct
+
+crcbp = open("flag.png","rb").read()
+for i in range(2000):
+    for j in range(2000):
+        data = crcbp[12:16] + struct.pack('>i',i) + struct.pack('>i',j)+crcbp[24:29]
+        crc32 = binascii.crc32(data) & 0xffffffff
+        if(crc32 == 0x370c8f0b):
+            print(i,j)
+            print('hex:',hex(i),hex(j))
+```
+
+TweakPNG修改宽高即可看到flag
+
+### 59. [HBNIS2018]caesar
+
+凯撒解密：
+
+![image-20231228101719388](buu_wp.assets/image-20231228101719388.png)
+
+### 60. 黑客帝国
+
+打开的文本观察到都是16进制数据，CyberChef转为16进制保存得到一个rar压缩包：
+
+![image-20231228103053487](buu_wp.assets/image-20231228103053487.png)
+
+有密码，ARCHPR爆破得到密码，解压是张png图片，但打不开，010打开：
+
+![image-20231228103406746](buu_wp.assets/image-20231228103406746.png)
+
+观察看到文件尾是FF D9，可能是jpg文件，修改文件头为FF D8，再改下后缀为jpg，直接打开即可得flag。
+
+### 61. [SWPU2019]伟大的侦探
+
+解压发现需要密码，密码.txt有提示：
+
+![image-20231228104314279](buu_wp.assets/image-20231228104314279.png)
+
+用010打开，修改为EBCDIC即可看到密码
+
+![image-20231228104243122](buu_wp.assets/image-20231228104243122.png)
+
+解压是跳舞小人，对照解密即可得到flag
+
+### 62. [HBNIS2018]低个头
+
+键盘解密
+
 
 
 ## Web
