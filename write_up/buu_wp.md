@@ -2326,3 +2326,13 @@ ARCHPR破解码`ARCHPRP-GSVMT-66892-GKVMB-52992`
 
 [CTF常用伪协议总结_compress.zlib ctf-CSDN博客](https://blog.csdn.net/weixin_51735061/article/details/123156046)
 
+[PHP伪协议_伪协议闭合-CSDN博客](https://blog.csdn.net/qq_53142368/article/details/116594299)
+
+[php://filter的各种过滤器_php://filter过滤器种类-CSDN博客](https://blog.csdn.net/qq_44657899/article/details/109300335)
+
+[SQL注入时当and、or等字符被过滤了怎么办_sql注入and被过滤-CSDN博客](https://blog.csdn.net/weixin_40950781/article/details/100061268)
+
+[sql注入绕WAF的N种姿势-安全客 - 安全资讯平台 (anquanke.com)](https://www.anquanke.com/post/id/268428#:~:text=当 order by 被过滤时，可以使用 into 变量名进行代替。 4.and%2For绕过 主流的,、or、xor进行拦截。 替代字符：and 等于%26%26、or 等于 ||、not 等于 !、xor 等于|)
+
+[.user.ini文件构成的PHP后门 - phith0n (wooyun.js.org)](https://wooyun.js.org/drops/user.ini文件构成的PHP后门.html)
+

