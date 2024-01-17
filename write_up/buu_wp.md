@@ -1481,9 +1481,31 @@ wllmup_up_up
 
 ### 68. sqltest
 
+大鲨鱼打开，为SQL注入，使用tshark将所有http请求的uri导出：
+
+```shell
+tshark -r sqltest.pcapng -Y "http.request" -T fields -e http.request.full_uri > data.txt
+```
+
+- `-r` 读取文件
+- `-Y` 过滤语句
+- `-T pdml|ps|text|fields|psml` 设置解码结果输出的格式
+- `-e` 输出特定字段
+- `http.request.uri` http请求的uri部分
+
+URL编码解码一下，从此开始是二分法爆破数值：
+
+![image-20240110165810103](buu_wp.assets/image-20240110165810103.png)
+
+将最后的二分结果转换下即得flag：
+
+![image-20240110171048990](buu_wp.assets/image-20240110171048990.png)
 
 
-### john-in-the-middle
+
+### 69. john-in-the-middle
+
+
 
 ### [ACTF新生赛2020]swp
 
